@@ -130,6 +130,26 @@ function App() {
     });
   }
 
+  // ✨ ฟังก์ชันใหม่: ส่งรายงานเข้า LINE
+  const handleSendLine = () => {
+    // สร้างข้อความสรุปที่จะส่งไปในแชท
+    const message = `💊 รายงานแอป YaJai:\nคุณ ${username} กินยาไปแล้ว ${takenMeds}/${totalMeds} รายการ\nคิดเป็นความคืบหน้า ${progressPercent}% ครับ! 💖`;
+
+    fetch(`${API_URL}/notify`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message })
+    })
+    .then(res => {
+      if(!res.ok) throw new Error('ส่งไม่สำเร็จ');
+      return res.json();
+    })
+    .then(() => {
+      Swal.fire('ส่งสำเร็จ!', 'เช็คข้อความใน LINE ได้เลย 📱', 'success');
+    })
+    .catch(err => Swal.fire('อ๊ะ!', 'ตั้งค่าหลังบ้านยังไม่สมบูรณ์ หรือ Server ยังไม่อัปเดต', 'error'));
+  }
+
   const handleAuth = (e) => {
     e.preventDefault()
     const endpoint = isLoginMode ? '/login' : '/register'
@@ -233,7 +253,24 @@ function App() {
             🌅 เริ่มวันใหม่
           </button>
         </div>
-        
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0, color: '#333' }}>📊 สรุปความคืบหน้าวันนี้</h3>
+          <div>
+            <button 
+              onClick={handleResetDay} 
+              style={{ background: '#FF9800', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+              🌅 เริ่มวันใหม่
+            </button>
+            {/* ปุ่ม LINE เพิ่มเข้ามาตรงนี้ */}
+            <button 
+              onClick={handleSendLine} 
+              style={{ background: '#00B900', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', marginLeft: '10px' }}>
+              📱 ส่งรายงานเข้า LINE
+            </button>
+          </div>
+        </div>
+         
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
           <span style={{ color: '#555' }}>กินยาไปแล้ว: <strong>{takenMeds} / {totalMeds}</strong> รายการ</span>
           <span style={{ fontWeight: 'bold', color: progressPercent === 100 ? '#4CAF50' : '#2196F3' }}>
