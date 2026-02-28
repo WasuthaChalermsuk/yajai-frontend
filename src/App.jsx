@@ -12,17 +12,18 @@ function App() {
 
   const API_URL = 'https://yajai-api.onrender.com/api';
 
-  // ✨ สร้าง Headers ที่แนบ Token ไว้ใช้ตอนยิง API
+  // สร้าง Headers ที่แนบ Token ไว้ใช้ตอนยิง API
   const getAuthHeaders = () => {
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` // <--- ยื่นตั๋วให้ยามดูตรงนี้!
+      'Authorization': `Bearer ${token}`
     }
   }
 
+  // ดึงข้อมูลยาเมื่อล็อกอิน
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }) // ✨ แนบ Headers
+      fetch(`${API_URL}/meds`, { headers: getAuthHeaders() })
         .then(res => {
           if (!res.ok) throw new Error('Token อาจจะหมดอายุ');
           return res.json();
@@ -30,7 +31,7 @@ function App() {
         .then(data => setMeds(data))
         .catch(err => {
           console.log("กรุณาล็อกอินใหม่", err);
-          handleLogout(); // ถ้าตั๋วมีปัญหา ให้เด้งออกไปหน้าล็อกอิน
+          handleLogout();
         })
     }
   }, [token])
@@ -38,7 +39,7 @@ function App() {
   const handleTakeMed = (id) => {
     fetch(`${API_URL}/meds/${id}`, { 
       method: 'PUT',
-      headers: getAuthHeaders() // ✨ แนบ Headers
+      headers: getAuthHeaders()
     })
       .then(res => res.json())
       .then(() => {
@@ -50,7 +51,7 @@ function App() {
     if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบยานี้? 🗑️')) {
       fetch(`${API_URL}/meds/${id}`, { 
         method: 'DELETE',
-        headers: getAuthHeaders() // ✨ แนบ Headers
+        headers: getAuthHeaders()
       })
         .then(res => res.json())
         .then(() => {
@@ -66,7 +67,7 @@ function App() {
 
     fetch(`${API_URL}/meds`, {
       method: 'POST',
-      headers: getAuthHeaders(), // ✨ แนบ Headers
+      headers: getAuthHeaders(),
       body: JSON.stringify({ name: newName, time: newTime })
     })
       .then(res => res.json())
@@ -115,6 +116,12 @@ function App() {
     }
   }
 
+  // --- คำนวณข้อมูลสำหรับ Dashboard ---
+  const totalMeds = meds.length;
+  const takenMeds = meds.filter(med => med.status === 'กินแล้ว 💖').length;
+  const progressPercent = totalMeds === 0 ? 0 : Math.round((takenMeds / totalMeds) * 100);
+
+  // 1. หน้าจอตอนที่ยัง "ไม่ได้ล็อกอิน"
   if (!token) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '400px', margin: '50px auto', background: 'white', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
@@ -135,8 +142,11 @@ function App() {
     )
   }
 
+  // 2. หน้าจอตอน "ล็อกอินแล้ว"
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '500px', margin: '0 auto', color: '#333' }}>
+      
+      {/* แถบด้านบน: ชื่อแอป + โปรไฟล์ + ปุ่ม Logout */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: 'white', margin: 0 }}>แอป YaJai 💊</h1>
         <div style={{ textAlign: 'right' }}>
@@ -145,6 +155,36 @@ function App() {
         </div>
       </div>
 
+      {/* --- Dashboard สรุปการกินยา --- */}
+      <div style={{ background: 'white', padding: '15px', borderRadius: '10px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ marginTop: 0, color: '#333' }}>📊 สรุปความคืบหน้าวันนี้</h3>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+          <span style={{ color: '#555' }}>กินยาไปแล้ว: <strong>{takenMeds} / {totalMeds}</strong> รายการ</span>
+          <span style={{ fontWeight: 'bold', color: progressPercent === 100 ? '#4CAF50' : '#2196F3' }}>
+            {progressPercent}%
+          </span>
+        </div>
+
+        {/* หลอด Progress Bar */}
+        <div style={{ background: '#e0e0e0', borderRadius: '10px', height: '20px', width: '100%', overflow: 'hidden' }}>
+          <div style={{ 
+            background: progressPercent === 100 ? '#4CAF50' : 'linear-gradient(90deg, #2196F3, #64b5f6)', 
+            height: '100%', 
+            width: `${progressPercent}%`,
+            transition: 'width 0.5s ease-in-out'
+          }}></div>
+        </div>
+
+        {/* ข้อความให้กำลังใจ */}
+        {progressPercent === 100 && totalMeds > 0 ? (
+          <p style={{ textAlign: 'center', margin: '10px 0 0 0', color: '#4CAF50', fontWeight: 'bold' }}>
+            🎉 เก่งมากครับ! วันนี้คุณกินยาครบถ้วนแล้ว! 💖
+          </p>
+        ) : null}
+      </div>
+
+      {/* กล่องเพิ่มยา */}
       <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '10px', marginBottom: '20px' }}>
         <h3 style={{ marginTop: 0 }}>➕ เพิ่มยาใหม่</h3>
         <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -154,6 +194,7 @@ function App() {
         </form>
       </div>
       
+      {/* รายการยา */}
       <div style={{ background: '#f0f0f0', padding: '15px', borderRadius: '10px' }}>
         <h3>รายการยาวันนี้</h3>
         {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#888' }}>ยังไม่มียาในระบบของคุณครับ 💊</p> : null}
