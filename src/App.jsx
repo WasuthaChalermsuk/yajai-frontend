@@ -33,10 +33,15 @@ function App() {
   const handleAddMed = (e) => {
     e.preventDefault();
     if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณาระบุชื่อคนไข้ ชื่อยา และเวลา');
+    
     fetch(`${API_URL}/meds`, { 
       method: 'POST', 
       headers: getAuthHeaders(), 
-      body: JSON.stringify({ name: newName, time: newTime, patientName: targetPatient }) 
+      body: JSON.stringify({ 
+        name: newName, 
+        time: newTime, 
+        patientName: targetPatient.trim() 
+      }) 
     }).then(res => res.json()).then(data => { 
       setMeds([...meds, data.medicine]); 
       setNewName(''); setNewTime(''); setTargetPatient('');
