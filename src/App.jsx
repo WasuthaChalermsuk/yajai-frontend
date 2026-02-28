@@ -1,35 +1,45 @@
 import { useState, useEffect } from 'react'
 
 function App() {
-  // --- State สำหรับยา ---
   const [meds, setMeds] = useState([])
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
-
-  // --- State สำหรับ Login ---
-  // เช็คว่าเคยล็อกอินไว้ไหม (ดึงจาก Local Storage ในเบราว์เซอร์)
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [username, setUsername] = useState(localStorage.getItem('username') || '')
   const [authUsername, setAuthUsername] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [isLoginMode, setIsLoginMode] = useState(true)
 
-  // สังเกตว่าผมตัดคำว่า /meds ออก เพื่อให้ใช้ API ได้หลายตัว (ทั้งล็อกอินและเรื่องยา)
   const API_URL = 'https://yajai-api.onrender.com/api';
 
-  // ดึงข้อมูลยา (จะดึงก็ต่อเมื่อมี token/ล็อกอินแล้วเท่านั้น)
+  // ✨ สร้าง Headers ที่แนบ Token ไว้ใช้ตอนยิง API
+  const getAuthHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` // <--- ยื่นตั๋วให้ยามดูตรงนี้!
+    }
+  }
+
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/meds`)
-        .then(res => res.json())
+      fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }) // ✨ แนบ Headers
+        .then(res => {
+          if (!res.ok) throw new Error('Token อาจจะหมดอายุ');
+          return res.json();
+        })
         .then(data => setMeds(data))
-        .catch(err => console.log("เชื่อมต่อ Backend ไม่ได้", err))
+        .catch(err => {
+          console.log("กรุณาล็อกอินใหม่", err);
+          handleLogout(); // ถ้าตั๋วมีปัญหา ให้เด้งออกไปหน้าล็อกอิน
+        })
     }
   }, [token])
 
-  // --- ฟังก์ชันจัดการยา ---
   const handleTakeMed = (id) => {
-    fetch(`${API_URL}/meds/${id}`, { method: 'PUT' })
+    fetch(`${API_URL}/meds/${id}`, { 
+      method: 'PUT',
+      headers: getAuthHeaders() // ✨ แนบ Headers
+    })
       .then(res => res.json())
       .then(() => {
         setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖' } : med))
@@ -38,7 +48,10 @@ function App() {
 
   const handleDeleteMed = (id) => {
     if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบยานี้? 🗑️')) {
-      fetch(`${API_URL}/meds/${id}`, { method: 'DELETE' })
+      fetch(`${API_URL}/meds/${id}`, { 
+        method: 'DELETE',
+        headers: getAuthHeaders() // ✨ แนบ Headers
+      })
         .then(res => res.json())
         .then(() => {
           setMeds(meds.filter(med => med.id !== id));
@@ -53,7 +66,7 @@ function App() {
 
     fetch(`${API_URL}/meds`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(), // ✨ แนบ Headers
       body: JSON.stringify({ name: newName, time: newTime })
     })
       .then(res => res.json())
@@ -64,7 +77,6 @@ function App() {
       })
   }
 
-  // --- ฟังก์ชัน Login / Register ---
   const handleAuth = (e) => {
     e.preventDefault()
     const endpoint = isLoginMode ? '/login' : '/register'
@@ -77,7 +89,6 @@ function App() {
     .then(res => res.json())
     .then(data => {
       if (data.token) {
-        // ล็อกอินสำเร็จ เก็บ Token และชื่อผู้ใช้ลงเครื่อง
         setToken(data.token)
         setUsername(data.username)
         localStorage.setItem('token', data.token)
@@ -85,10 +96,9 @@ function App() {
         setAuthUsername('')
         setAuthPassword('')
       } else {
-        // สมัครสมาชิกสำเร็จ หรือ เเจ้งเตือน Error
         alert(data.message)
         if (!isLoginMode && data.message === 'สมัครสมาชิกสำเร็จ!') {
-          setIsLoginMode(true) // ถ้าสมัครผ่าน ให้สลับไปหน้าล็อกอินอัตโนมัติ
+          setIsLoginMode(true)
         }
       }
     })
@@ -101,13 +111,10 @@ function App() {
       setUsername('')
       localStorage.removeItem('token')
       localStorage.removeItem('username')
-      setMeds([]) // ล้างข้อมูลยาบนหน้าจอ
+      setMeds([])
     }
   }
 
-  // -----------------------------------------------------------------
-  // 1. หน้าจอตอนที่ยัง "ไม่ได้ล็อกอิน"
-  // -----------------------------------------------------------------
   if (!token) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '400px', margin: '50px auto', background: 'white', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
@@ -115,16 +122,8 @@ function App() {
           {isLoginMode ? '🔐 เข้าสู่ระบบ YaJai' : '📝 สมัครสมาชิกใหม่'}
         </h2>
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <input 
-            type="text" placeholder="ชื่อผู้ใช้ (Username)" value={authUsername} 
-            onChange={e => setAuthUsername(e.target.value)} required
-            style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
-          />
-          <input 
-            type="password" placeholder="รหัสผ่าน (Password)" value={authPassword} 
-            onChange={e => setAuthPassword(e.target.value)} required
-            style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
-          />
+          <input type="text" placeholder="ชื่อผู้ใช้ (Username)" value={authUsername} onChange={e => setAuthUsername(e.target.value)} required style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }} />
+          <input type="password" placeholder="รหัสผ่าน (Password)" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }} />
           <button type="submit" style={{ background: isLoginMode ? '#4CAF50' : '#2196F3', color: 'white', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
             {isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
           </button>
@@ -136,74 +135,37 @@ function App() {
     )
   }
 
-  // -----------------------------------------------------------------
-  // 2. หน้าจอตอน "ล็อกอินแล้ว" (แอปปกติของเรา)
-  // -----------------------------------------------------------------
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '500px', margin: '0 auto', color: '#333' }}>
-      
-      {/* แถบด้านบน: ชื่อแอป + โปรไฟล์ + ปุ่ม Logout */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: 'white', margin: 0 }}>แอป YaJai 💊</h1>
         <div style={{ textAlign: 'right' }}>
           <span style={{ color: 'white', marginRight: '10px', fontWeight: 'bold' }}>👤 {username}</span>
-          <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-            ออกจากระบบ
-          </button>
+          <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ออกจากระบบ</button>
         </div>
       </div>
 
       <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '10px', marginBottom: '20px' }}>
         <h3 style={{ marginTop: 0 }}>➕ เพิ่มยาใหม่</h3>
         <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input 
-            type="text" 
-            placeholder="ชื่อยา เช่น ยาดม" 
-            value={newName} 
-            onChange={(e) => setNewName(e.target.value)}
-            style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
-          />
-          <input 
-            type="time" 
-            value={newTime} 
-            onChange={(e) => setNewTime(e.target.value)}
-            style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
-          />
-          <button type="submit" style={{ background: '#2196F3', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
-            บันทึก
-          </button>
+          <input type="text" placeholder="ชื่อยา เช่น ยาดม" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }} />
+          <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }} />
+          <button type="submit" style={{ background: '#2196F3', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>บันทึก</button>
         </form>
       </div>
       
       <div style={{ background: '#f0f0f0', padding: '15px', borderRadius: '10px' }}>
         <h3>รายการยาวันนี้</h3>
+        {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#888' }}>ยังไม่มียาในระบบของคุณครับ 💊</p> : null}
         <ul style={{ listStyleType: 'none', padding: 0 }}>
           {meds.map(med => (
             <li key={med.id} style={{ marginBottom: '15px', padding: '15px', background: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <div style={{ fontSize: '20px', color: '#000', marginBottom: '5px' }}>
-                <strong>{med.name}</strong>
-              </div>
-              <div style={{ color: '#555', marginBottom: '15px' }}>
-                เวลา: {med.time} | สถานะ: <strong style={{ color: med.status === 'กินแล้ว 💖' ? 'green' : 'orange' }}>{med.status}</strong>
-              </div>
-              <button 
-                onClick={() => handleTakeMed(med.id)}
-                disabled={med.status === 'กินแล้ว 💖'}
-                style={{ 
-                  background: med.status === 'กินแล้ว 💖' ? '#ccc' : '#4CAF50', 
-                  color: 'white', border: 'none', padding: '12px 15px', 
-                  borderRadius: '5px', cursor: med.status === 'กินแล้ว 💖' ? 'not-allowed' : 'pointer', 
-                  fontSize: '16px', width: '100%', fontWeight: 'bold'
-                }}>
+              <div style={{ fontSize: '20px', color: '#000', marginBottom: '5px' }}><strong>{med.name}</strong></div>
+              <div style={{ color: '#555', marginBottom: '15px' }}>เวลา: {med.time} | สถานะ: <strong style={{ color: med.status === 'กินแล้ว 💖' ? 'green' : 'orange' }}>{med.status}</strong></div>
+              <button onClick={() => handleTakeMed(med.id)} disabled={med.status === 'กินแล้ว 💖'} style={{ background: med.status === 'กินแล้ว 💖' ? '#ccc' : '#4CAF50', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '5px', cursor: med.status === 'กินแล้ว 💖' ? 'not-allowed' : 'pointer', fontSize: '16px', width: '100%', fontWeight: 'bold' }}>
                 {med.status === 'กินแล้ว 💖' ? '✅ กินยานี้เรียบร้อย' : '✅ ฉันกินยานี้แล้ว'}
               </button>
-              <button 
-                onClick={() => handleDeleteMed(med.id)}
-                style={{ 
-                  background: '#ff4d4d', color: 'white', border: 'none', 
-                  padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', 
-                  fontSize: '14px', width: '100%', fontWeight: 'bold', marginTop: '10px'
-                }}>
+              <button onClick={() => handleDeleteMed(med.id)} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontSize: '14px', width: '100%', fontWeight: 'bold', marginTop: '10px' }}>
                 🗑️ ลบยานี้ทิ้ง
               </button>
             </li>
