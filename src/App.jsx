@@ -5,7 +5,7 @@ function App() {
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
 
-  // เปลี่ยนลิงก์เป็นของ Render.com
+  // ลิงก์จาก Render.com ของคุณ
   const API_URL = 'https://yajai-api.onrender.com/api/meds';
 
   useEffect(() => {
@@ -86,4 +86,16 @@ function App() {
                   background: med.status === 'กินแล้ว 💖' ? '#ccc' : '#4CAF50', 
                   color: 'white', border: 'none', padding: '12px 15px', 
                   borderRadius: '5px', cursor: med.status === 'กินแล้ว 💖' ? 'not-allowed' : 'pointer', 
-                  fontSize: '16px', width: '100%', fontWeight:
+                  fontSize: '16px', width: '100%', fontWeight: 'bold'
+                }}>
+                {med.status === 'กินแล้ว 💖' ? '✅ กินยานี้เรียบร้อย' : '✅ ฉันกินยานี้แล้ว'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+export default App
