@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Swal from 'sweetalert2' 
+import Swal from 'sweetalert2'
 
 function App() {
   const [meds, setMeds] = useState([])
@@ -35,17 +35,17 @@ function App() {
   const handleAddMed = (e) => {
     e.preventDefault();
     if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณาระบุชื่อคนไข้ ชื่อยา และเวลา');
-    
-    fetch(`${API_URL}/meds`, { 
-      method: 'POST', 
-      headers: getAuthHeaders(), 
-      body: JSON.stringify({ 
-        name: newName, 
-        time: newTime, 
+
+    fetch(`${API_URL}/meds`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        name: newName,
+        time: newTime,
         patientName: targetPatient // ✨ ส่งชื่อคนไข้ไปให้หลังบ้านบันทึก
-      }) 
-    }).then(res => res.json()).then(data => { 
-      setMeds([...meds, data.medicine]); 
+      })
+    }).then(res => res.json()).then(data => {
+      setMeds([...meds, data.medicine]);
       setNewName(''); setNewTime(''); setTargetPatient('');
       Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success');
     })
@@ -72,32 +72,32 @@ function App() {
     const percent = total === 0 ? 0 : Math.round((taken / total) * 100);
 
     const message = `🔔 รายงานจากแอป YaJai:\nคนไข้: คุณ ${username}\nสถานะ: กินยาแล้ว ${taken}/${total} รายการ (${percent}%)\nส่งเมื่อ: ${new Date().toLocaleTimeString('th-TH')} น.`;
-    
-    fetch(`${API_URL}/notify`, { 
-      method: 'POST', 
-      headers: getAuthHeaders(), 
-      body: JSON.stringify({ message }) 
+
+    fetch(`${API_URL}/notify`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message })
     }).then(() => Swal.fire('ส่งสำเร็จ!', 'ส่งข้อมูลเข้า LINE ผู้ดูแลแล้ว', 'success'))
   }
 
   // --- ระบบ Auth ---
   const handleAuth = (e) => {
     e.preventDefault()
-    fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ username: authUsername, password: authPassword }) 
+    fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: authUsername, password: authPassword })
     }).then(res => res.json()).then(data => {
-      if (data.token) { 
-        setToken(data.token); setUsername(data.username); 
-        localStorage.setItem('token', data.token); localStorage.setItem('username', data.username); 
+      if (data.token) {
+        setToken(data.token); setUsername(data.username);
+        localStorage.setItem('token', data.token); localStorage.setItem('username', data.username);
       } else { Swal.fire(data.message || 'เกิดข้อผิดพลาด'); }
     })
   }
 
-  const handleLogout = () => { 
-    setToken(''); setUsername(''); 
-    localStorage.clear(); setMeds([]); 
+  const handleLogout = () => {
+    setToken(''); setUsername('');
+    localStorage.clear(); setMeds([]);
   }
 
   const totalMeds = meds.length;
@@ -129,7 +129,7 @@ function App() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
         <h1 style={{ margin: 0, fontSize: '28px', color: '#90CAF9' }}>YaJai 💊</h1>
         <div style={{ textAlign: 'right' }}>
-          <span style={{ marginRight: '10px', fontWeight: 'bold' }}>👤 {username} {username === 'admin' && <span style={{color: '#FFC107'}}>(Admin)</span>}</span>
+          <span style={{ marginRight: '10px', fontWeight: 'bold' }}>👤 {username} {username === 'admin' && <span style={{ color: '#FFC107' }}>(Admin)</span>}</span>
           <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>ออก</button>
         </div>
       </div>
@@ -149,11 +149,11 @@ function App() {
 
           <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
             <h3 style={{ marginTop: 0, color: '#90CAF9' }}>📋 รายการยาทั้งหมดที่สั่ง</h3>
-            {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#bbb' }}>ยังไม่ได้สั่งยาให้ใคร</p> : 
+            {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#bbb' }}>ยังไม่ได้สั่งยาให้ใคร</p> :
               meds.map(m => (
                 <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #555', padding: '15px 0' }}>
                   <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '17px', color: 'white' }}>{m.name} <span style={{color: '#FFC107', fontSize: '14px'}}>(ให้คุณ {m.owner})</span></div>
+                    <div style={{ fontWeight: 'bold', fontSize: '17px', color: 'white' }}>{m.name} <span style={{ color: '#FFC107', fontSize: '14px' }}>(ให้คุณ {m.owner})</span></div>
                     <div style={{ fontSize: '14px', color: '#bbb' }}>เวลา: {m.time} น. | สถานะ: {m.status}</div>
                   </div>
                   <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>ลบ</button>
@@ -170,18 +170,23 @@ function App() {
             <div style={{ background: '#222', height: '22px', borderRadius: '11px', overflow: 'hidden', margin: '15px 0' }}>
               <div style={{ width: `${progressPercent}%`, background: '#4CAF50', height: '100%', transition: '0.8s ease-in-out' }}></div>
             </div>
-            <p style={{ fontWeight: 'bold', color: '#81C784', fontSize: '20px', margin: '10px 0' }}>{progressPercent}% <span style={{fontSize: '14px', color: 'white'}}>(กินแล้ว {takenMeds}/{totalMeds})</span></p>
+            <p style={{ fontWeight: 'bold', color: '#81C784', fontSize: '20px', margin: '10px 0' }}>{progressPercent}% <span style={{ fontSize: '14px', color: 'white' }}>(กินแล้ว {takenMeds}/{totalMeds})</span></p>
             <button onClick={handleSendLine} style={{ width: '100%', background: '#00B900', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', fontSize: '16px' }}>📱 ส่งรายงานเข้า LINE ผู้ดูแล</button>
           </div>
 
           <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
             <h3 style={{ marginTop: 0, color: '#90CAF9' }}>💊 รายการยาที่คุณต้องกิน</h3>
-            {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#bbb' }}>ไม่มีรายการยา (รอผู้ดูแลสั่งยาให้)</p> : 
-              meds.map(m => (
-                <div key={m.id} style={{ background: '#333', padding: '15px', borderRadius: '12px', marginBottom: '12px', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '19px', color: 'white' }}>{m.name} <span style={{ float: 'right', fontSize: '15px', color: '#90CAF9' }}>🕒 {m.time} น.</span></div>
-                  <div style={{ color: m.status === 'กินแล้ว 💖' ? '#81C784' : '#FFB74D', margin: '10px 0', fontSize: '15px', fontWeight: '500' }}>สถานะ: {m.status}</div>
-                  <button 
-                    onClick={() => handleTakeMed(m.id)} 
-                    disabled={m.status === 'กินแล้ว 💖'} 
-                    style={{ width: '100%', padding: '12px', background: m.status === 'กินแล้ว 💖' ? '#5
+            {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#bbb' }}>ไม่มีรายการยา (รอผู้ดูแลสั่งยาให้)</p> :
+              {/* ก๊อปส่วนนี้ไปวางทับใน App.jsx ตรงส่วนที่ Error นะครับ */ }
+meds.map(m => (
+            <div key={m.id} style={{ background: '#333', padding: '15px', borderRadius: '12px', marginBottom: '12px', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '19px', color: 'white' }}>{m.name} <span style={{ float: 'right', fontSize: '15px', color: '#90CAF9' }}>🕒 {m.time} น.</span></div>
+              <div style={{ color: m.status === 'กินแล้ว 💖' ? '#81C784' : '#FFB74D', margin: '10px 0', fontSize: '15px', fontWeight: '500' }}>สถานะ: {m.status}</div>
+              <button
+                onClick={() => handleTakeMed(m.id)}
+                disabled={m.status === 'กินแล้ว 💖'}
+                style={{ width: '100%', padding: '12px', background: m.status === 'กินแล้ว 💖' ? '#555' : '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: m.status === 'กินแล้ว 💖' ? 'default' : 'pointer', fontSize: '16px' }}>
+                {m.status === 'กินแล้ว 💖' ? 'กินยาแล้วเรียบร้อย' : 'กดเพื่อยืนยันการกินยา'}
+              </button>
+            </div>
+            ))
