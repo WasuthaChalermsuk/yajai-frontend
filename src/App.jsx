@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Swal from 'sweetalert2' // ✨ นำเข้า SweetAlert2
+import Swal from 'sweetalert2' 
 
 function App() {
   const [meds, setMeds] = useState([])
@@ -30,7 +30,7 @@ function App() {
         .then(data => setMeds(data))
         .catch(err => {
           console.log("กรุณาล็อกอินใหม่", err);
-          handleLogout(true); // บังคับออกถ้าตั๋วพัง
+          handleLogout(true);
         })
     }
   }, [token])
@@ -43,7 +43,6 @@ function App() {
       .then(res => res.json())
       .then(() => {
         setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖' } : med))
-        // ✨ แจ้งเตือนเมื่อกินยาสำเร็จ
         Swal.fire({
           icon: 'success',
           title: 'เก่งมาก!',
@@ -55,7 +54,6 @@ function App() {
   }
 
   const handleDeleteMed = (id) => {
-    // ✨ เปลี่ยนหน้าต่างยืนยันการลบให้สวยขึ้น
     Swal.fire({
       title: 'แน่ใจหรือไม่?',
       text: "คุณต้องการลบยานี้ทิ้งใช่ไหม! 🗑️",
@@ -84,7 +82,6 @@ function App() {
   const handleAddMed = (e) => {
     e.preventDefault();
     if (!newName || !newTime) {
-      // ✨ แจ้งเตือนเมื่อกรอกข้อมูลไม่ครบ
       return Swal.fire({
         icon: 'warning',
         title: 'ข้อมูลไม่ครบ',
@@ -104,6 +101,33 @@ function App() {
         setNewTime('')
         Swal.fire({ icon: 'success', title: 'เพิ่มยาสำเร็จ', showConfirmButton: false, timer: 1500 })
       })
+  }
+
+  // ✨ ฟีเจอร์ใหม่: ฟังก์ชันสำหรับปุ่มเริ่มวันใหม่ (Reset ยา)
+  const handleResetDay = () => {
+    Swal.fire({
+      title: 'เริ่มวันใหม่? 🌅',
+      text: "ระบบจะรีเซ็ตสถานะยาเป็น 'ยังไม่ได้กิน' ทั้งหมด",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#FF9800',
+      cancelButtonColor: '#aaa',
+      confirmButtonText: 'ใช่, เริ่มวันใหม่เลย!',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        fetch(`${API_URL}/meds-reset`, { 
+          method: 'PUT',
+          headers: getAuthHeaders()
+        })
+          .then(res => res.json())
+          .then(() => {
+            setMeds(meds.map(med => ({ ...med, status: 'ยังไม่ได้กิน' })));
+            Swal.fire('สำเร็จ!', 'เริ่มต้นวันใหม่อย่างสดใสครับ ☀️', 'success');
+          })
+          .catch(err => Swal.fire('เกิดข้อผิดพลาด', 'รีเซ็ตข้อมูลไม่สำเร็จ', 'error'));
+      }
+    });
   }
 
   const handleAuth = (e) => {
@@ -126,7 +150,6 @@ function App() {
         setAuthPassword('')
         Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ!', showConfirmButton: false, timer: 1500 })
       } else {
-        // ✨ แจ้งเตือนสมัครสมาชิกหรือ Error
         const isSuccess = data.message === 'สมัครสมาชิกสำเร็จ!';
         Swal.fire({ icon: isSuccess ? 'success' : 'error', title: data.message });
         if (!isLoginMode && isSuccess) {
@@ -142,7 +165,6 @@ function App() {
       executeLogout();
       return;
     }
-    // ✨ แจ้งเตือนยืนยันการออกจากระบบ
     Swal.fire({
       title: 'ต้องการออกจากระบบ?',
       icon: 'question',
@@ -202,7 +224,15 @@ function App() {
       </div>
 
       <div style={{ background: 'white', padding: '15px', borderRadius: '10px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ marginTop: 0, color: '#333' }}>📊 สรุปความคืบหน้าวันนี้</h3>
+        {/* ✨ เพิ่มปุ่มเริ่มวันใหม่ ไว้ข้างๆ หัวข้อกราฟ */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0, color: '#333' }}>📊 สรุปความคืบหน้าวันนี้</h3>
+          <button 
+            onClick={handleResetDay} 
+            style={{ background: '#FF9800', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+            🌅 เริ่มวันใหม่
+          </button>
+        </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
           <span style={{ color: '#555' }}>กินยาไปแล้ว: <strong>{takenMeds} / {totalMeds}</strong> รายการ</span>
