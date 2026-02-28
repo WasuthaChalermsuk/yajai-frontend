@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Swal from 'sweetalert2' // ✨ นำเข้า SweetAlert2
 
 function App() {
   const [meds, setMeds] = useState([])
@@ -12,7 +13,6 @@ function App() {
 
   const API_URL = 'https://yajai-api.onrender.com/api';
 
-  // สร้าง Headers ที่แนบ Token ไว้ใช้ตอนยิง API
   const getAuthHeaders = () => {
     return {
       'Content-Type': 'application/json',
@@ -20,7 +20,6 @@ function App() {
     }
   }
 
-  // ดึงข้อมูลยาเมื่อล็อกอิน
   useEffect(() => {
     if (token) {
       fetch(`${API_URL}/meds`, { headers: getAuthHeaders() })
@@ -31,7 +30,7 @@ function App() {
         .then(data => setMeds(data))
         .catch(err => {
           console.log("กรุณาล็อกอินใหม่", err);
-          handleLogout();
+          handleLogout(true); // บังคับออกถ้าตั๋วพัง
         })
     }
   }, [token])
@@ -44,26 +43,54 @@ function App() {
       .then(res => res.json())
       .then(() => {
         setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖' } : med))
+        // ✨ แจ้งเตือนเมื่อกินยาสำเร็จ
+        Swal.fire({
+          icon: 'success',
+          title: 'เก่งมาก!',
+          text: 'บันทึกการกินยาเรียบร้อยแล้ว 💖',
+          timer: 1500,
+          showConfirmButton: false
+        })
       })
   }
 
   const handleDeleteMed = (id) => {
-    if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบยานี้? 🗑️')) {
-      fetch(`${API_URL}/meds/${id}`, { 
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      })
-        .then(res => res.json())
-        .then(() => {
-          setMeds(meds.filter(med => med.id !== id));
+    // ✨ เปลี่ยนหน้าต่างยืนยันการลบให้สวยขึ้น
+    Swal.fire({
+      title: 'แน่ใจหรือไม่?',
+      text: "คุณต้องการลบยานี้ทิ้งใช่ไหม! 🗑️",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ff4d4d',
+      cancelButtonColor: '#aaa',
+      confirmButtonText: 'ใช่, ลบเลย!',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        fetch(`${API_URL}/meds/${id}`, { 
+          method: 'DELETE',
+          headers: getAuthHeaders()
         })
-        .catch(err => console.log("ลบไม่ได้:", err));
-    }
+          .then(res => res.json())
+          .then(() => {
+            setMeds(meds.filter(med => med.id !== id));
+            Swal.fire('ลบแล้ว!', 'ยาถูกลบออกจากระบบแล้ว', 'success');
+          })
+          .catch(err => Swal.fire('เกิดข้อผิดพลาด', 'ลบยาไม่สำเร็จ', 'error'));
+      }
+    })
   }
 
   const handleAddMed = (e) => {
     e.preventDefault();
-    if (!newName || !newTime) return alert('กรุณากรอกชื่อยาและเวลาให้ครบถ้วน!');
+    if (!newName || !newTime) {
+      // ✨ แจ้งเตือนเมื่อกรอกข้อมูลไม่ครบ
+      return Swal.fire({
+        icon: 'warning',
+        title: 'ข้อมูลไม่ครบ',
+        text: 'กรุณากรอกชื่อยาและเวลาให้ครบถ้วน!'
+      });
+    }
 
     fetch(`${API_URL}/meds`, {
       method: 'POST',
@@ -75,6 +102,7 @@ function App() {
         setMeds([...meds, data.medicine])
         setNewName('')
         setNewTime('')
+        Swal.fire({ icon: 'success', title: 'เพิ่มยาสำเร็จ', showConfirmButton: false, timer: 1500 })
       })
   }
 
@@ -96,32 +124,52 @@ function App() {
         localStorage.setItem('username', data.username)
         setAuthUsername('')
         setAuthPassword('')
+        Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ!', showConfirmButton: false, timer: 1500 })
       } else {
-        alert(data.message)
-        if (!isLoginMode && data.message === 'สมัครสมาชิกสำเร็จ!') {
+        // ✨ แจ้งเตือนสมัครสมาชิกหรือ Error
+        const isSuccess = data.message === 'สมัครสมาชิกสำเร็จ!';
+        Swal.fire({ icon: isSuccess ? 'success' : 'error', title: data.message });
+        if (!isLoginMode && isSuccess) {
           setIsLoginMode(true)
         }
       }
     })
-    .catch(err => alert('เชื่อมต่อระบบสมาชิกไม่ได้'))
+    .catch(err => Swal.fire('เกิดข้อผิดพลาด', 'เชื่อมต่อระบบไม่ได้', 'error'))
   }
 
-  const handleLogout = () => {
-    if (window.confirm('ต้องการออกจากระบบใช่หรือไม่?')) {
-      setToken('')
-      setUsername('')
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-      setMeds([])
+  const handleLogout = (force = false) => {
+    if (force) {
+      executeLogout();
+      return;
     }
+    // ✨ แจ้งเตือนยืนยันการออกจากระบบ
+    Swal.fire({
+      title: 'ต้องการออกจากระบบ?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#ff4d4d',
+      cancelButtonColor: '#aaa',
+      confirmButtonText: 'ออกจากระบบ',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeLogout();
+      }
+    })
   }
 
-  // --- คำนวณข้อมูลสำหรับ Dashboard ---
+  const executeLogout = () => {
+    setToken('')
+    setUsername('')
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    setMeds([])
+  }
+
   const totalMeds = meds.length;
   const takenMeds = meds.filter(med => med.status === 'กินแล้ว 💖').length;
   const progressPercent = totalMeds === 0 ? 0 : Math.round((takenMeds / totalMeds) * 100);
 
-  // 1. หน้าจอตอนที่ยัง "ไม่ได้ล็อกอิน"
   if (!token) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '400px', margin: '50px auto', background: 'white', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
@@ -142,20 +190,17 @@ function App() {
     )
   }
 
-  // 2. หน้าจอตอน "ล็อกอินแล้ว"
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '500px', margin: '0 auto', color: '#333' }}>
       
-      {/* แถบด้านบน: ชื่อแอป + โปรไฟล์ + ปุ่ม Logout */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: 'white', margin: 0 }}>แอป YaJai 💊</h1>
         <div style={{ textAlign: 'right' }}>
           <span style={{ color: 'white', marginRight: '10px', fontWeight: 'bold' }}>👤 {username}</span>
-          <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ออกจากระบบ</button>
+          <button onClick={() => handleLogout()} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ออกจากระบบ</button>
         </div>
       </div>
 
-      {/* --- Dashboard สรุปการกินยา --- */}
       <div style={{ background: 'white', padding: '15px', borderRadius: '10px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
         <h3 style={{ marginTop: 0, color: '#333' }}>📊 สรุปความคืบหน้าวันนี้</h3>
         
@@ -166,7 +211,6 @@ function App() {
           </span>
         </div>
 
-        {/* หลอด Progress Bar */}
         <div style={{ background: '#e0e0e0', borderRadius: '10px', height: '20px', width: '100%', overflow: 'hidden' }}>
           <div style={{ 
             background: progressPercent === 100 ? '#4CAF50' : 'linear-gradient(90deg, #2196F3, #64b5f6)', 
@@ -176,7 +220,6 @@ function App() {
           }}></div>
         </div>
 
-        {/* ข้อความให้กำลังใจ */}
         {progressPercent === 100 && totalMeds > 0 ? (
           <p style={{ textAlign: 'center', margin: '10px 0 0 0', color: '#4CAF50', fontWeight: 'bold' }}>
             🎉 เก่งมากครับ! วันนี้คุณกินยาครบถ้วนแล้ว! 💖
@@ -184,7 +227,6 @@ function App() {
         ) : null}
       </div>
 
-      {/* กล่องเพิ่มยา */}
       <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '10px', marginBottom: '20px' }}>
         <h3 style={{ marginTop: 0 }}>➕ เพิ่มยาใหม่</h3>
         <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -194,7 +236,6 @@ function App() {
         </form>
       </div>
       
-      {/* รายการยา */}
       <div style={{ background: '#f0f0f0', padding: '15px', borderRadius: '10px' }}>
         <h3>รายการยาวันนี้</h3>
         {meds.length === 0 ? <p style={{ textAlign: 'center', color: '#888' }}>ยังไม่มียาในระบบของคุณครับ 💊</p> : null}
