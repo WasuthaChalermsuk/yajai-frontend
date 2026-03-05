@@ -84,13 +84,23 @@ function App() {
   
   // ดึงข้อมูลบันทึกอาการ
   const fetchDiaries = () => {
-      const target = username === 'admin' ? filterPatient || 'all' : username;
-      if (target !== 'all') {
-          fetch(`${API_URL}/diary/${target}`, { headers: getAuthHeaders() }).then(res => res.json()).then(setDiaries);
+  fetch(`${API_URL}/diaries`, { headers: getAuthHeaders() })
+    .then(res => res.json())
+    .then(data => {
+      if (username === 'admin') {
+        // ถ้ายูสเซอร์คือ admin ให้ดูว่าเราเลือก filterPatient ไว้ที่ใคร
+        if (filterPatient) {
+          const filtered = data.filter(d => d.owner === filterPatient);
+          setDiaries(filtered);
+        } else {
+          // ถ้าไม่ได้เลือก filter เลย ให้โชว์ทั้งหมด (ลองแก้เป็นแบบนี้ดูก่อนครับว่าข้อมูลมาไหม)
+          setDiaries(data); 
+        }
       } else {
-          setDiaries([]); // ถ้าแอดมินเลือก "ดูทุกคน" อาจจะเคลียร์หน้าจอส่วนนี้ไปก่อน
+        setDiaries(data);
       }
-  };
+    });
+};
 
   // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
@@ -106,10 +116,10 @@ function App() {
 
   // โหลดบันทึกอาการใหม่ทุกครั้งที่แอดมินเปลี่ยนตัวกรองคนไข้
   useEffect(() => {
-    if (token) {
-  setTimeout(() => fetchDiaries(), 0);
-}
-  }, [token, filterPatient, username])
+  if (token) {
+    setTimeout(() => fetchDiaries(), 0);
+  }
+}, [token, filterPatient, username]);
 
   // ระบบดึงแชทอัตโนมัติ (Polling) ทุกๆ 3 วินาที
   useEffect(() => {
