@@ -1,15 +1,20 @@
 {
-  "name": "YaJai 💊",
   "short_name": "YaJai",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#333333",
-  "theme_color": "#90CAF9",
+  "name": "YaJai ระบบเตือนกินยา",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2865/2865523.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
-  ]
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2196F3",
+  "background_color": "#333333"
 }
