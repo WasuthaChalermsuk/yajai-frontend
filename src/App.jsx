@@ -56,20 +56,27 @@ function App() {
     }
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      try {
-        const register = await navigator.serviceWorker.register('/sw.js');
-        const subscription = await register.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-        });
-        // ส่งรหัสมือถือไปเก็บที่หลังบ้าน
-        await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
-        setPushEnabled(true);
-        Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว! เวลามียาใหม่จะเด้งเตือนทันที', 'success');
-      } catch (err) { 
-        console.error(err); 
-        Swal.fire('พังตรงนี้!', String(err), 'error'); 
-      }
+        try {
+          // 1. สั่งลงทะเบียน Service Worker
+          await navigator.serviceWorker.register('/sw.js');
+          
+          // ✨ 2. (เพิ่มใหม่) สั่งให้ระบบ "รอ" จนกว่ายามจะพร้อมทำงาน 100%
+          const readySw = await navigator.serviceWorker.ready;
+          
+          // 3. เปลี่ยนมาใช้ readySw ในการ subscribe
+          const subscription = await readySw.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+          });
+          
+          // ส่งข้อมูลไปเซฟที่หลังบ้าน
+          await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
+          setPushEnabled(true);
+          Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว! เวลามียาใหม่จะเด้งเตือนทันที', 'success');
+        } catch (err) { 
+          console.error(err); 
+          Swal.fire('พังตรงนี้!', String(err), 'error'); 
+        }
     } else { Swal.fire('ถูกปฏิเสธ', 'คุณไม่อนุญาตให้แอปส่งการแจ้งเตือน', 'warning'); }
   }
 
