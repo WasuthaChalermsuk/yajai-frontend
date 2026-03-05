@@ -56,6 +56,46 @@ function App() {
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) { setPatients(data); setChatTarget(data[0] || ''); } }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
 
+  // ... (State เดิมของแชท) ...
+  const [diaryInput, setDiaryInput] = useState('')
+  const [diaries, setDiaries] = useState([])
+
+  // ✨ ฟังก์ชันพิมพ์ด้วยเสียง (Voice to Text)
+  const handleVoiceTyping = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return Swal.fire('ขออภัย', 'เบราว์เซอร์ของคุณไม่รองรับระบบสั่งงานด้วยเสียงครับ ลองใช้ Chrome ดูนะ', 'error');
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'th-TH'; // รองรับภาษาไทย!
+    recognition.start();
+    
+    Swal.fire({ title: '🎙️ กำลังฟัง...', text: 'พูดข้อความที่ต้องการส่งได้เลยครับ', showConfirmButton: false });
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setChatInput(prev => prev + transcript + ' ');
+      Swal.close();
+    };
+    recognition.onerror = () => Swal.fire('เกิดข้อผิดพลาด', 'จับเสียงไม่ได้ครับ ลองใหม่อีกครั้งนะ', 'error');
+  };
+
+  // ✨ ฟังก์ชันบันทึกอาการ
+  const handleSaveDiary = (e) => {
+    e.preventDefault();
+    if (!diaryInput.trim()) return;
+    fetch(`${API_URL}/diary`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ note: diaryInput }) })
+      .then(() => { setDiaryInput(''); Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); fetchDiaries(); });
+  };
+
+  const fetchDiaries = () => {
+      const target = username === 'admin' ? filterPatient || 'all' : username;
+      if (target !== 'all') {
+          fetch(`${API_URL}/diary/${target}`, { headers: getAuthHeaders() }).then(res => res.json()).then(setDiaries);
+      }
+  };
+
+  // ไปเพิ่ม fetchDiaries() ใน useEffect ตัวแรกด้วยนะครับ เพื่อให้มันโหลดข้อมูลตอนเข้าแอป
+
   useEffect(() => { 
     if (token) { 
         fetchMeds(); fetchHistory(); 
@@ -213,18 +253,44 @@ function App() {
         )
       )}
 
-      {/* ================= แท็บ 2: ประวัติ ================= */}
+      {/* ================= แท็บ 2: ประวัติ + กราฟ + ปริ้นท์ ================= */}
       {activeTab === 'history' && (
         <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
-          <h3 style={{ marginTop: 0 }}>📊 ประวัติการกินยาย้อนหลัง</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0 }}>📊 สถิติ & ประวัติ</h3>
+            <button onClick={() => window.print()} style={{ background: '#9C27B0', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ Save เป็น PDF</button>
+          </div>
+
           {history.length === 0 ? <p style={{ color: '#bbb' }}>ยังไม่มีประวัติการกินยา</p> : 
             history.map((h, index) => (
-              <div key={index} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '10px', borderLeft: h.percent === 100 ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><b>📅 {h.date}</b>{username === 'admin' && <span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>}</div>
-                <div>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : '#FFC107' }}>{h.percent}%</b></div>
+              <div key={index} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <b>📅 {h.date}</b>{username === 'admin' && <span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>}
+                </div>
+                {/* ✨ กราฟแถบสี (CSS Bar Chart) */}
+                <div style={{ background: '#555', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                    <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
+                </div>
+                <div style={{ fontSize: '14px', color: '#ccc' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : '#FFC107' }}>{h.percent}%</b></div>
               </div>
             ))
           }
+
+          {/* ✨ สมุดจดอาการ (แสดงในหน้าประวัติเลย) */}
+          <hr style={{ borderColor: '#555', margin: '20px 0' }} />
+          <h3 style={{ color: '#FF9800' }}>📓 สมุดบันทึกอาการ</h3>
+          {username !== 'admin' && (
+              <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? มีผลข้างเคียงไหม?" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} />
+                  <button type="submit" style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>บันทึก</button>
+              </form>
+          )}
+          {diaries.map((d, i) => (
+              <div key={i} style={{ background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '8px', fontSize: '14px' }}>
+                  <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
+                  <div>💬 {d.note}</div>
+              </div>
+          ))}
         </div>
       )}
 
@@ -264,9 +330,10 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          {/* ช่องพิมพ์ */}
+          {/* ช่องพิมพ์ (แท็บแชท) */}
           <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '10px', background: '#333', gap: '10px' }}>
-             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความ..." style={{ flex: 1, padding: '10px', borderRadius: '20px', border: 'none', outline: 'none' }} />
+             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}>🎙️</button>
+             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความ หรือกดไมค์..." style={{ flex: 1, padding: '10px', borderRadius: '20px', border: 'none', outline: 'none' }} />
              <button type="submit" style={{ background: '#2196F3', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px', fontWeight: 'bold' }}>ส่ง</button>
           </form>
         </div>
