@@ -84,22 +84,25 @@ function App() {
   
   // ดึงข้อมูลบันทึกอาการ
   const fetchDiaries = () => {
+  // เปลี่ยนเป็น /diaries ให้ตรงกันทั้งหมด
   fetch(`${API_URL}/diaries`, { headers: getAuthHeaders() })
     .then(res => res.json())
     .then(data => {
-      if (username === 'admin') {
-        // ถ้ายูสเซอร์คือ admin ให้ดูว่าเราเลือก filterPatient ไว้ที่ใคร
-        if (filterPatient) {
-          const filtered = data.filter(d => d.owner === filterPatient);
-          setDiaries(filtered);
+      if (Array.isArray(data)) {
+        if (username === 'admin') {
+          if (filterPatient) {
+            // กรองตามชื่อที่เลือกใน Dropdown
+            const filtered = data.filter(d => d.owner === filterPatient);
+            setDiaries(filtered);
+          } else {
+            setDiaries(data); // ถ้าไม่กรอง ให้โชว์ทั้งหมด
+          }
         } else {
-          // ถ้าไม่ได้เลือก filter เลย ให้โชว์ทั้งหมด (ลองแก้เป็นแบบนี้ดูก่อนครับว่าข้อมูลมาไหม)
-          setDiaries(data); 
+          setDiaries(data); // คนไข้ดูของตัวเอง
         }
-      } else {
-        setDiaries(data);
       }
-    });
+    })
+    .catch(err => console.error("Error fetching diaries:", err));
 };
 
   // โหลดข้อมูลเมื่อเข้าแอป
@@ -161,11 +164,26 @@ function App() {
 
   // ฟังก์ชันบันทึกอาการ
   const handleSaveDiary = (e) => {
-    e.preventDefault();
-    if (!diaryInput.trim()) return;
-    fetch(`${API_URL}/diary`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ note: diaryInput }) })
-      .then(() => { setDiaryInput(''); Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); fetchDiaries(); });
-  };
+  e.preventDefault();
+  if (!diaryInput.trim()) return;
+
+  // เปลี่ยนจาก /diary เป็น /diaries ให้ตรงกับขาแอดมินที่ไปดึงมา
+  fetch(`${API_URL}/diaries`, { 
+    method: 'POST', 
+    headers: getAuthHeaders(), 
+    body: JSON.stringify({ note: diaryInput }) 
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
+      return res.json();
+    })
+    .then(() => { 
+      setDiaryInput(''); 
+      Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); 
+      fetchDiaries(); // สั่งให้โหลดใหม่ทันทีหลังบันทึก
+    })
+    .catch(err => Swal.fire('ผิดพลาด', 'ไม่สามารถส่งข้อมูลได้', 'error'));
+};
   // ฟังก์ชันส่งแชท
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -252,7 +270,10 @@ function App() {
             <div style={{ background: '#303f9f', padding: '20px', borderRadius: '15px', marginBottom: '20px' }}>
               <h3 style={{ marginTop: 0 }}>➕ สั่งยาให้คนไข้</h3>
               <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <select value={targetPatient} onChange={e => setTargetPatient(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }}>
+                <select 
+  value={filterPatient} 
+  onChange={e => {
+    setFilterPatient(e.target.value);}}style={{ padding: '6px', borderRadius: '5px', flex: 1 }}>
                   <option value="">-- เลือกคนไข้ --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
                 <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
