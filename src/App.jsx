@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2' 
 
-// ✨ สำคัญ: เอา Public Key ของคุณจาก Terminal มาใส่ตรงนี้!
-const PUBLIC_VAPID_KEY = 'ใส่_PUBLIC_KEY_ตรงนี้';
+const PUBLIC_VAPID_KEY = 'BOSDiwWnjtEkd-PimXzb_PeyTJpX1J9KARBfm_mYwVDLL-3oJ8wBU2Vvwce4FTRHl1dDokD0096qeSlcJbSeE88';
 
 // ฟังก์ชันแปลงกุญแจให้เป็นภาษาที่เบราว์เซอร์เข้าใจ
 function urlBase64ToUint8Array(base64String) {
@@ -67,7 +66,10 @@ function App() {
         await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
         setPushEnabled(true);
         Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว! เวลามียาใหม่จะเด้งเตือนทันที', 'success');
-      } catch (err) { console.error(err); Swal.fire('เกิดข้อผิดพลาด', 'ตั้งค่าแจ้งเตือนไม่สำเร็จ', 'error'); }
+      } catch (err) { 
+        console.error(err); 
+        Swal.fire('พังตรงนี้!', String(err), 'error'); 
+      }
     } else { Swal.fire('ถูกปฏิเสธ', 'คุณไม่อนุญาตให้แอปส่งการแจ้งเตือน', 'warning'); }
   }
 
