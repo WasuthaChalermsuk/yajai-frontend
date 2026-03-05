@@ -17,7 +17,7 @@ function App() {
   const [meds, setMeds] = useState([])
   const [patients, setPatients] = useState([]) 
   const [history, setHistory] = useState([])
-  const [activeTab, setActiveTab] = useState('meds') // ✨ ควบคุมหน้าจอ: meds, history, chat
+  const [activeTab, setActiveTab] = useState('meds') // ควบคุมหน้าจอ: meds, history, chat
   const [pushEnabled, setPushEnabled] = useState(Notification.permission === 'granted')
 
   // ระบบเพิ่มยา
@@ -35,11 +35,35 @@ function App() {
   const [editTime, setEditTime] = useState('')
   const [editMeal, setEditMeal] = useState('เช้า')
 
-  // ระบบแชท ✨
+  // ฟังก์ชันสำหรับกดปุ่ม "แก้ไข" เพื่อดึงข้อมูลยาเดิมมาแสดงในฟอร์ม
+  const startEdit = (med) => {
+    setEditingId(med.id);
+    setEditName(med.name);
+    setEditTime(med.time);
+    setEditMeal(med.meal || 'เช้า'); 
+  };
+
+  // ฟังก์ชันสำหรับกดปุ่ม "บันทึก" 
+  const handleSaveEdit = (id) => {
+    // อัปเดตข้อมูลยาใน State meds
+    const updatedMeds = meds.map(med =>
+      med.id === id ? { ...med, name: editName, time: editTime, meal: editMeal } : med
+    );
+    setMeds(updatedMeds); // บันทึกข้อมูลใหม่ลงไป
+    setEditingId(null);   // ปิดหน้าต่างแก้ไข
+    
+    // ปล. ถ้าเพื่อนมีการต่อ Database หรือ Backend ด้วย อย่าลืมใส่โค้ดอัปเดต API ตรงนี้นะ
+  };
+
+  // ระบบแชท
   const [messages, setMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
-  const [chatTarget, setChatTarget] = useState('') // แอดมินคุยกับใคร? (คนไข้จะเป็น admin เสมอ)
+  const [chatTarget, setChatTarget] = useState('') 
   const messagesEndRef = useRef(null)
+
+  // ระบบบันทึกอาการ ✨
+  const [diaryInput, setDiaryInput] = useState('')
+  const [diaries, setDiaries] = useState([])
 
   // ระบบ Auth
   const [token, setToken] = useState(localStorage.getItem('token') || '')
@@ -50,23 +74,69 @@ function App() {
 
   const API_URL = 'https://yajai-api.onrender.com/api'; 
   const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` })
+  const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); setActiveTab('meds'); setPushEnabled(false); }
+
 
   // ฟังก์ชันโหลดข้อมูลหลัก
   const fetchMeds = () => { fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(setMeds).catch(() => handleLogout()) }
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) { setPatients(data); setChatTarget(data[0] || ''); } }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
+  
+  // ดึงข้อมูลบันทึกอาการ
+  const fetchDiaries = () => {
+      const target = username === 'admin' ? filterPatient || 'all' : username;
+      if (target !== 'all') {
+          fetch(`${API_URL}/diary/${target}`, { headers: getAuthHeaders() }).then(res => res.json()).then(setDiaries);
+      } else {
+          setDiaries([]); // ถ้าแอดมินเลือก "ดูทุกคน" อาจจะเคลียร์หน้าจอส่วนนี้ไปก่อน
+      }
+  };
 
-  // ... (State เดิมของแชท) ...
-  const [diaryInput, setDiaryInput] = useState('')
-  const [diaries, setDiaries] = useState([])
+  // โหลดข้อมูลเมื่อเข้าแอป
+  useEffect(() => { 
+    if (token) { 
+        fetchMeds(); 
+        fetchHistory(); 
+        if (username === 'admin') fetchPatients(); 
+         else {
+  setTimeout(() => setChatTarget('admin'), 0);
+}
+    } 
+  }, [token, username])
 
-  // ✨ ฟังก์ชันพิมพ์ด้วยเสียง (Voice to Text)
+  // โหลดบันทึกอาการใหม่ทุกครั้งที่แอดมินเปลี่ยนตัวกรองคนไข้
+  useEffect(() => {
+    if (token) {
+  setTimeout(() => fetchDiaries(), 0);
+}
+  }, [token, filterPatient, username])
+
+  // ระบบดึงแชทอัตโนมัติ (Polling) ทุกๆ 3 วินาที
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'chat' && chatTarget) {
+      const fetchMsgs = () => {
+        fetch(`${API_URL}/messages/${chatTarget}`, { headers: getAuthHeaders() })
+          .then(res => res.json())
+          .then(setMessages)
+          .catch(err => console.error(err));
+      }
+      fetchMsgs(); 
+      interval = setInterval(fetchMsgs, 3000); 
+    }
+    return () => clearInterval(interval);
+  }, [activeTab, chatTarget]);
+
+  // เลื่อนจอลงไปข้อความล่าสุดอัตโนมัติ
+  useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
+
+  // ฟังก์ชันพิมพ์ด้วยเสียง 🎙️
   const handleVoiceTyping = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return Swal.fire('ขออภัย', 'เบราว์เซอร์ของคุณไม่รองรับระบบสั่งงานด้วยเสียงครับ ลองใช้ Chrome ดูนะ', 'error');
     
     const recognition = new SpeechRecognition();
-    recognition.lang = 'th-TH'; // รองรับภาษาไทย!
+    recognition.lang = 'th-TH'; 
     recognition.start();
     
     Swal.fire({ title: '🎙️ กำลังฟัง...', text: 'พูดข้อความที่ต้องการส่งได้เลยครับ', showConfirmButton: false });
@@ -79,50 +149,13 @@ function App() {
     recognition.onerror = () => Swal.fire('เกิดข้อผิดพลาด', 'จับเสียงไม่ได้ครับ ลองใหม่อีกครั้งนะ', 'error');
   };
 
-  // ✨ ฟังก์ชันบันทึกอาการ
+  // ฟังก์ชันบันทึกอาการ
   const handleSaveDiary = (e) => {
     e.preventDefault();
     if (!diaryInput.trim()) return;
     fetch(`${API_URL}/diary`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ note: diaryInput }) })
       .then(() => { setDiaryInput(''); Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); fetchDiaries(); });
   };
-
-  const fetchDiaries = () => {
-      const target = username === 'admin' ? filterPatient || 'all' : username;
-      if (target !== 'all') {
-          fetch(`${API_URL}/diary/${target}`, { headers: getAuthHeaders() }).then(res => res.json()).then(setDiaries);
-      }
-  };
-
-  // ไปเพิ่ม fetchDiaries() ใน useEffect ตัวแรกด้วยนะครับ เพื่อให้มันโหลดข้อมูลตอนเข้าแอป
-
-  useEffect(() => { 
-    if (token) { 
-        fetchMeds(); fetchHistory(); 
-        if (username === 'admin') fetchPatients(); 
-        else setChatTarget('admin'); 
-    } 
-  }, [token, username])
-
-  // ✨ ระบบดึงแชทอัตโนมัติ (Polling) ทุกๆ 3 วินาที
-  useEffect(() => {
-    let interval;
-    if (activeTab === 'chat' && chatTarget) {
-      const fetchMsgs = () => {
-        fetch(`${API_URL}/messages/${chatTarget}`, { headers: getAuthHeaders() })
-          .then(res => res.json())
-          .then(setMessages)
-          .catch(err => console.error(err));
-      }
-      fetchMsgs(); // ดึงรอบแรก
-      interval = setInterval(fetchMsgs, 3000); // ดึงซ้ำทุก 3 วิ
-    }
-    return () => clearInterval(interval);
-  }, [activeTab, chatTarget]);
-
-  // เลื่อนจอลงไปข้อความล่าสุดอัตโนมัติ
-  useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
-
   // ฟังก์ชันส่งแชท
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -134,20 +167,32 @@ function App() {
     }).then(() => { setChatInput(''); });
   }
 
-  const handleEnablePush = async () => { /* โค้ดเดิม... */ }
+  // ฟังก์ชันเปิดแจ้งเตือนแบบสมบูรณ์ 🔔
+  const handleEnablePush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return Swal.fire('เสียใจด้วย', 'เบราว์เซอร์ไม่รองรับ', 'error');
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        const readySw = await navigator.serviceWorker.ready;
+        const subscription = await readySw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY) });
+        await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
+        setPushEnabled(true);
+        Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว!', 'success');
+      } catch (err) { console.error(err); Swal.fire('เกิดข้อผิดพลาด', String(err), 'error'); }
+    } else { Swal.fire('ถูกปฏิเสธ', 'ไม่อนุญาตให้แอปส่งแจ้งเตือน', 'warning'); }
+  }
+
   const handleCallAdmin = () => { fetch(`${API_URL}/call-admin`, { method: 'POST', headers: getAuthHeaders() }).then(() => Swal.fire('ส่งข้อความแล้ว', 'ระบบแจ้งเตือนไปยังผู้ดูแลเรียบร้อยครับ', 'success')) }
   const handleImageChange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setNewImage(reader.result); reader.readAsDataURL(file); } }
   
   const handleAddMed = (e) => { e.preventDefault(); if (!newName || !newTime || !targetPatient || !newStock) return Swal.fire('กรุณากรอกข้อมูลให้ครบ'); fetch(`${API_URL}/meds`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient, stock: Number(newStock), imageUrl: newImage }) }).then(res => res.json()).then(data => { setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewImage(''); Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); }) }
   const handleDeleteMed = (id) => { Swal.fire({ title: 'ลบรายการยา?', icon: 'warning', showCancelButton: true }).then(res => { if (res.isConfirmed) fetch(`${API_URL}/meds/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(() => setMeds(meds.filter(m => m.id !== id))) }) }
-  const startEdit = (med) => { setEditingId(med.id); setEditName(med.name); setEditTime(med.time); setEditMeal(med.meal || 'เช้า'); }
-  const handleSaveEdit = (id) => { fetch(`${API_URL}/meds/edit/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ name: editName, time: editTime, meal: editMeal }) }).then(res => res.json()).then(updatedMed => { setMeds(meds.map(m => m.id === id ? updatedMed : m)); setEditingId(null); Swal.fire({ icon: 'success', title: 'อัปเดตยาเรียบร้อย', timer: 1000, showConfirmButton: false }); }) }
   const handleTakeMed = (id) => { fetch(`${API_URL}/meds/${id}`, { method: 'PUT', headers: getAuthHeaders() }).then(res => res.json()).then((updatedMed) => { setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖', stock: updatedMed.stock } : med)); Swal.fire({ icon: 'success', title: 'เยี่ยมมาก!', timer: 1000, showConfirmButton: false }); }) }
   const handleResetMeds = () => { Swal.fire({ title: 'เริ่มวันใหม่?', text: "สถานะยาจะกลับเป็น 'ยังไม่ได้กิน'", icon: 'question', showCancelButton: true }).then(res => { if (res.isConfirmed) { fetch(`${API_URL}/meds/reset/all`, { method: 'PUT', headers: getAuthHeaders() }).then(() => { fetchMeds(); Swal.fire('สำเร็จ', 'รีเซ็ตสถานะแล้ว', 'success'); }) } }) }
 
   const handleAuth = (e) => { e.preventDefault(); fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: authUsername, password: authPassword }) }).then(res => res.json()).then(data => { if (data.token) { setToken(data.token); setUsername(data.username); localStorage.setItem('token', data.token); localStorage.setItem('username', data.username); } else { Swal.fire(data.message || 'เกิดข้อผิดพลาด'); } }) }
-  const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); setActiveTab('meds'); setPushEnabled(false); }
-
+  
   if (!token) {
     return (
       <div style={{ padding: '20px', maxWidth: '400px', margin: '50px auto', background: '#333', borderRadius: '15px', textAlign: 'center', color: 'white' }}>
@@ -178,7 +223,9 @@ function App() {
       {/* เมนูนำทาง 3 แท็บ */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button onClick={() => setActiveTab('meds')} style={{ flex: 1, padding: '10px', background: activeTab === 'meds' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💊 {username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</button>
-        <button onClick={() => setActiveTab('history')} style={{ flex: 1, padding: '10px', background: activeTab === 'history' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>📊 ประวัติ</button>
+        <button onClick={() => setActiveTab('history')} style={{ flex: 1, padding: '10px', background: activeTab === 'history' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+          {username === 'admin' ? '📊 ประวัติ' : '📓 บันทึกอาการ'}
+        </button>
         <button onClick={() => setActiveTab('chat')} style={{ flex: 1, padding: '10px', background: activeTab === 'chat' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💬 แชท</button>
       </div>
 
@@ -219,13 +266,42 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}><h3 style={{ margin: 0 }}>📋 จัดการยาทั้งหมด</h3><button onClick={handleResetMeds} style={{ background: '#2196F3', color: 'white', border: 'none', padding: '8px', borderRadius: '5px' }}>🔄 เริ่มวันใหม่</button></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}><span style={{ fontSize: '14px' }}>🔍 กรองดูคนไข้:</span><select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}><option value="">-- ดูทุกคน --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}</select></div>
               {filteredAdminMeds.map(m => (
-                  <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                      {m.imageUrl ? <img src={m.imageUrl} alt="med" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }} /> : <div style={{ width: '50px', height: '50px', background: '#555', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>💊</div>}
-                      <div><b>{m.name}</b> <span style={{ color: m.stock <= 5 ? '#ff5252' : '#81C784' }}>(เหลือ {m.stock || 0})</span> <span style={{ color: '#bbb', fontSize: '14px' }}><br/>({m.owner})</span> <br/><span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span><br/><span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span></div>
+                <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0' }}>
+                  {/* ถ้ารายการนี้กำลังถูกกดแก้ไขอยู่ */}
+                  {editingId === m.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#555', padding: '15px', borderRadius: '10px' }}>
+                      <b style={{ color: '#FFC107' }}>✏️ แก้ไขข้อมูลยา</b>
+                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="ชื่อยา" style={{ padding: '8px', borderRadius: '5px', border: 'none' }} />
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{ padding: '8px', borderRadius: '5px', flex: 1, border: 'none' }}>
+                          {mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}
+                        </select>
+                        <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ padding: '8px', borderRadius: '5px', flex: 1, border: 'none' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                        <button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '8px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>💾 บันทึก</button>
+                        <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#9e9e9e', color: 'white', padding: '8px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>❌ ยกเลิก</button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}><button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 15px' }}>🗑️ ลบ</button></div>
-                  </div>
+                  ) : (
+                    /* ถ้าไม่ได้กดแก้ไข ให้แสดงข้อมูลยาปกติ */
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                        {m.imageUrl ? <img src={m.imageUrl} alt="med" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }} /> : <div style={{ width: '50px', height: '50px', background: '#555', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>💊</div>}
+                        <div>
+                          <b>{m.name}</b> <span style={{ color: m.stock <= 5 ? '#ff5252' : '#81C784' }}>(เหลือ {m.stock || 0})</span> 
+                          <span style={{ color: '#bbb', fontSize: '14px' }}><br/>({m.owner})</span> <br/>
+                          <span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span><br/>
+                          <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
+                        <button onClick={() => startEdit(m)} style={{ background: '#FFC107', color: '#333', border: 'none', borderRadius: '5px', padding: '6px 15px', fontWeight: 'bold' }}>✏️ แก้ไข</button>
+                        <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '6px 15px' }}>🗑️ ลบ</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </>
@@ -253,42 +329,56 @@ function App() {
         )
       )}
 
-      {/* ================= แท็บ 2: ประวัติ + กราฟ + ปริ้นท์ ================= */}
+      {/* ================= แท็บ 2: ประวัติ / บันทึกอาการ ================= */}
       {activeTab === 'history' && (
         <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: 0 }}>📊 สถิติ & ประวัติ</h3>
-            <button onClick={() => window.print()} style={{ background: '#9C27B0', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ Save เป็น PDF</button>
+            <h3 style={{ margin: 0 }}>{username === 'admin' ? '📊 สถิติ & ประวัติ' : '📓 บันทึกอาการ'}</h3>
+            
+            {/* ปุ่ม Print ให้เฉพาะ Admin เห็น */}
+            {username === 'admin' && (
+              <button onClick={() => window.print()} style={{ background: '#9C27B0', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ Save เป็น PDF</button>
+            )}
           </div>
 
-          {history.length === 0 ? <p style={{ color: '#bbb' }}>ยังไม่มีประวัติการกินยา</p> : 
-            history.map((h, index) => (
-              <div key={index} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <b>📅 {h.date}</b>{username === 'admin' && <span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>}
-                </div>
-                {/* ✨ กราฟแถบสี (CSS Bar Chart) */}
-                <div style={{ background: '#555', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
-                    <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
-                </div>
-                <div style={{ fontSize: '14px', color: '#ccc' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : '#FFC107' }}>{h.percent}%</b></div>
-              </div>
-            ))
-          }
+          {/* 📊 ส่วนนี้ให้ "แอดมิน" เห็นคนเดียว (ประวัติการกินยา) */}
+          {username === 'admin' && (
+            <>
+              {history.length === 0 ? <p style={{ color: '#bbb' }}>ยังไม่มีประวัติการกินยา</p> : 
+                history.map((h, index) => (
+                  <div key={index} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <b>📅 {h.date}</b><span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>
+                    </div>
+                    {/* กราฟแถบสี (CSS Bar Chart) */}
+                    <div style={{ background: '#555', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                        <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#ccc' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : '#FFC107' }}>{h.percent}%</b></div>
+                  </div>
+                ))
+              }
+              <hr style={{ borderColor: '#555', margin: '20px 0' }} />
+              <h3 style={{ color: '#FF9800' }}>📓 บันทึกอาการของคนไข้</h3>
+            </>
+          )}
 
-          {/* ✨ สมุดจดอาการ (แสดงในหน้าประวัติเลย) */}
-          <hr style={{ borderColor: '#555', margin: '20px 0' }} />
-          <h3 style={{ color: '#FF9800' }}>📓 สมุดบันทึกอาการ</h3>
+          {/* 📓 ส่วนสมุดจดอาการ (แสดงให้คนไข้เห็น และให้คนไข้พิมพ์ได้) */}
           {username !== 'admin' && (
               <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? มีผลข้างเคียงไหม?" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} />
+                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งผู้ดูแลได้เลย" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} />
                   <button type="submit" style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>บันทึก</button>
               </form>
           )}
+          
+          {diaries.length === 0 && <p style={{ color: '#bbb', textAlign: 'center' }}>ยังไม่มีการบันทึกอาการครับ</p>}
+          
           {diaries.map((d, i) => (
               <div key={i} style={{ background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '8px', fontSize: '14px' }}>
                   <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
                   <div>💬 {d.note}</div>
+                  {/* แสดงชื่อคนไข้ให้แอดมินรู้ว่าใครเป็นคนพิมพ์ */}
+                  {username === 'admin' && <div style={{ fontSize: '12px', color: '#90CAF9', marginTop: '4px' }}>- คุณ {d.owner}</div>}
               </div>
           ))}
         </div>
