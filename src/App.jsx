@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2' 
 
+// ✨ สำคัญ: เอา Public Key ของคุณมาใส่ตรงนี้เหมือนเดิมนะครับ!
 const PUBLIC_VAPID_KEY = 'BOSDiwWnjtEkd-PimXzb_PeyTJpX1J9KARBfm_mYwVDLL-3oJ8wBU2Vvwce4FTRHl1dDokD0096qeSlcJbSeE88';
 
-// ฟังก์ชันแปลงกุญแจให้เป็นภาษาที่เบราว์เซอร์เข้าใจ
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -18,7 +18,7 @@ function App() {
   const [patients, setPatients] = useState([]) 
   const [history, setHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
-  const [pushEnabled, setPushEnabled] = useState(Notification.permission === 'granted') // เช็คว่าเปิดแจ้งเตือนหรือยัง
+  const [pushEnabled, setPushEnabled] = useState(Notification.permission === 'granted')
 
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
@@ -39,55 +39,42 @@ function App() {
   const API_URL = 'https://yajai-api.onrender.com/api'; 
   const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` })
 
-  const fetchMeds = () => {
-    fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(data => setMeds(data)).catch(() => handleLogout())
-  }
+  const fetchMeds = () => { fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(data => setMeds(data)).catch(() => handleLogout()) }
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) setPatients(data); }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => setHistory(data)); }
 
-  useEffect(() => { 
-    if (token) { fetchMeds(); fetchHistory(); if (username === 'admin') fetchPatients(); } 
-  }, [token, username])
+  useEffect(() => { if (token) { fetchMeds(); fetchHistory(); if (username === 'admin') fetchPatients(); } }, [token, username])
 
-  // ✨ 🟢 ฟังก์ชันขออนุญาตแจ้งเตือน
   const handleEnablePush = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      return Swal.fire('เสียใจด้วย', 'เบราว์เซอร์ของคุณไม่รองรับการแจ้งเตือน', 'error');
-    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return Swal.fire('เสียใจด้วย', 'เบราว์เซอร์ไม่รองรับ', 'error');
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-        try {
-          // 1. สั่งลงทะเบียน Service Worker
-          await navigator.serviceWorker.register('/sw.js');
-          
-          // ✨ 2. (เพิ่มใหม่) สั่งให้ระบบ "รอ" จนกว่ายามจะพร้อมทำงาน 100%
-          const readySw = await navigator.serviceWorker.ready;
-          
-          // 3. เปลี่ยนมาใช้ readySw ในการ subscribe
-          const subscription = await readySw.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-          });
-          
-          // ส่งข้อมูลไปเซฟที่หลังบ้าน
-          await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
-          setPushEnabled(true);
-          Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว! เวลามียาใหม่จะเด้งเตือนทันที', 'success');
-        } catch (err) { 
-          console.error(err); 
-          Swal.fire('พังตรงนี้!', String(err), 'error'); 
-        }
-    } else { Swal.fire('ถูกปฏิเสธ', 'คุณไม่อนุญาตให้แอปส่งการแจ้งเตือน', 'warning'); }
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        const readySw = await navigator.serviceWorker.ready;
+        const subscription = await readySw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY) });
+        await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
+        setPushEnabled(true);
+        Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว!', 'success');
+      } catch (err) { console.error(err); Swal.fire('พังตรงนี้!', String(err), 'error'); }
+    } else { Swal.fire('ถูกปฏิเสธ', 'ไม่อนุญาตให้แอปส่งแจ้งเตือน', 'warning'); }
+  }
+
+  // ✨ ฟังก์ชันใหม่ สำหรับกดเรียกผู้ดูแล
+  const handleCallAdmin = () => {
+    fetch(`${API_URL}/call-admin`, { method: 'POST', headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.message === 'Success') Swal.fire('ส่งข้อความแล้ว', 'ระบบแจ้งเตือนไปยังผู้ดูแลเรียบร้อยครับ', 'success');
+        else Swal.fire('อ๊ะ!', 'ผู้ดูแลยังไม่ได้เปิดรับการแจ้งเตือนครับ', 'warning');
+      })
   }
 
   const handleAddMed = (e) => {
     e.preventDefault();
     if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณากรอกข้อมูลให้ครบ');
     fetch(`${API_URL}/meds`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient }) 
-    }).then(res => res.json()).then(data => { 
-      setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewMeal('เช้า');
-      Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย (ระบบส่งแจ้งเตือนไปที่มือถือคนไข้แล้ว)`, 'success');
-    })
+    }).then(res => res.json()).then(data => { setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewMeal('เช้า'); Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); })
   }
 
   const handleDeleteMed = (id) => { Swal.fire({ title: 'ลบรายการยา?', icon: 'warning', showCancelButton: true }).then(res => { if (res.isConfirmed) fetch(`${API_URL}/meds/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(() => setMeds(meds.filter(m => m.id !== id))) }) }
@@ -134,6 +121,14 @@ function App() {
         <button onClick={() => setShowHistory(false)} style={{ flex: 1, padding: '10px', background: !showHistory ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💊 {username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</button>
         <button onClick={() => setShowHistory(true)} style={{ flex: 1, padding: '10px', background: showHistory ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>📊 ประวัติ</button>
       </div>
+
+      {/* ✨ ป้ายแจ้งเตือน ย้ายมาตรงนี้เพื่อให้ Admin เห็นและกดรับได้ด้วย */}
+      {!pushEnabled && !showHistory && (
+        <div style={{ background: '#FF9800', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'center', color: 'white' }}>
+          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>แอปนี้สามารถแจ้งเตือนเวลามียาใหม่/คนไข้กินยาได้</p>
+          <button onClick={handleEnablePush} style={{ background: '#333', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>🔔 เปิดรับการแจ้งเตือน</button>
+        </div>
+      )}
 
       {showHistory ? (
         <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
@@ -185,14 +180,11 @@ function App() {
           </>
         ) : (
           <>
-            {/* ✨ ปุ่มเปิดแจ้งเตือนสำหรับคนไข้ */}
-            {!pushEnabled && (
-              <div style={{ background: '#FF9800', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'center', color: 'white' }}>
-                <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>แอปนี้สามารถแจ้งเตือนเวลามียาใหม่ได้</p>
-                <button onClick={handleEnablePush} style={{ background: '#333', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>🔔 เปิดรับการแจ้งเตือน</button>
-              </div>
-            )}
-            
+            {/* ✨ ปุ่มเรียกผู้ดูแล (ฉุกเฉิน) */}
+            <button onClick={handleCallAdmin} style={{ width: '100%', padding: '12px', background: '#E91E63', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', cursor: 'pointer' }}>
+              🛎️ แจ้งเตือนเรียกผู้ดูแล
+            </button>
+
             {mealsCategory.map(mealName => {
               const medsInThisMeal = meds.filter(m => (m.meal || 'เช้า') === mealName);
               if (medsInThisMeal.length === 0) return null; 
