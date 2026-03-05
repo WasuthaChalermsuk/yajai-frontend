@@ -23,6 +23,7 @@ function App() {
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
   const [newMeal, setNewMeal] = useState('เช้า')
+  const [newStock, setNewStock] = useState(30) // ✨ State สำหรับเก็บจำนวนยาเริ่มต้นที่ 30 เม็ด
   const [targetPatient, setTargetPatient] = useState('')
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [username, setUsername] = useState(localStorage.getItem('username') || '')
@@ -60,7 +61,6 @@ function App() {
     } else { Swal.fire('ถูกปฏิเสธ', 'ไม่อนุญาตให้แอปส่งแจ้งเตือน', 'warning'); }
   }
 
-  // ✨ ฟังก์ชันใหม่ สำหรับกดเรียกผู้ดูแล
   const handleCallAdmin = () => {
     fetch(`${API_URL}/call-admin`, { method: 'POST', headers: getAuthHeaders() })
       .then(res => res.json())
@@ -72,15 +72,34 @@ function App() {
 
   const handleAddMed = (e) => {
     e.preventDefault();
-    if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณากรอกข้อมูลให้ครบ');
-    fetch(`${API_URL}/meds`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient }) 
-    }).then(res => res.json()).then(data => { setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewMeal('เช้า'); Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); })
+    if (!newName || !newTime || !targetPatient || !newStock) return Swal.fire('กรุณากรอกข้อมูลให้ครบ');
+    
+    // ✨ ส่งค่า stock ไปให้ระบบหลังบ้านด้วย
+    fetch(`${API_URL}/meds`, { 
+        method: 'POST', 
+        headers: getAuthHeaders(), 
+        body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient, stock: Number(newStock) }) 
+    }).then(res => res.json()).then(data => { 
+        setMeds([...meds, data.medicine]); 
+        setNewName(''); setNewTime(''); setNewMeal('เช้า'); setNewStock(30); 
+        Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); 
+    })
   }
 
   const handleDeleteMed = (id) => { Swal.fire({ title: 'ลบรายการยา?', icon: 'warning', showCancelButton: true }).then(res => { if (res.isConfirmed) fetch(`${API_URL}/meds/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(() => setMeds(meds.filter(m => m.id !== id))) }) }
   const startEdit = (med) => { setEditingId(med.id); setEditName(med.name); setEditTime(med.time); setEditMeal(med.meal || 'เช้า'); }
   const handleSaveEdit = (id) => { fetch(`${API_URL}/meds/edit/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ name: editName, time: editTime, meal: editMeal }) }).then(res => res.json()).then(updatedMed => { setMeds(meds.map(m => m.id === id ? updatedMed : m)); setEditingId(null); Swal.fire({ icon: 'success', title: 'อัปเดตยาเรียบร้อย', timer: 1000, showConfirmButton: false }); }) }
-  const handleTakeMed = (id) => { fetch(`${API_URL}/meds/${id}`, { method: 'PUT', headers: getAuthHeaders() }).then(() => { setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖' } : med)); Swal.fire({ icon: 'success', title: 'เยี่ยมมาก!', timer: 1000, showConfirmButton: false }); }) }
+  
+  // ✨ อัปเดตฟังก์ชันกินยาให้ดึงค่า stock ที่ถูกหักแล้วมาอัปเดตหน้าจอทันที
+  const handleTakeMed = (id) => { 
+      fetch(`${API_URL}/meds/${id}`, { method: 'PUT', headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then((updatedMed) => { 
+          setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖', stock: updatedMed.stock } : med)); 
+          Swal.fire({ icon: 'success', title: 'เยี่ยมมาก!', timer: 1000, showConfirmButton: false }); 
+      }) 
+  }
+  
   const handleResetMeds = () => { Swal.fire({ title: 'เริ่มวันใหม่?', text: "สถานะยาจะกลับเป็น 'ยังไม่ได้กิน'", icon: 'question', showCancelButton: true }).then(res => { if (res.isConfirmed) { fetch(`${API_URL}/meds/reset/all`, { method: 'PUT', headers: getAuthHeaders() }).then(() => { fetchMeds(); Swal.fire('สำเร็จ', 'รีเซ็ตสถานะแล้ว', 'success'); }) } }) }
 
   const handleAuth = (e) => {
@@ -122,7 +141,6 @@ function App() {
         <button onClick={() => setShowHistory(true)} style={{ flex: 1, padding: '10px', background: showHistory ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>📊 ประวัติ</button>
       </div>
 
-      {/* ✨ ป้ายแจ้งเตือน ย้ายมาตรงนี้เพื่อให้ Admin เห็นและกดรับได้ด้วย */}
       {!pushEnabled && !showHistory && (
         <div style={{ background: '#FF9800', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'center', color: 'white' }}>
           <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>แอปนี้สามารถแจ้งเตือนเวลามียาใหม่/คนไข้กินยาได้</p>
@@ -152,6 +170,10 @@ function App() {
                   <option value="">-- เลือกคนไข้ --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
                 <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
+                
+                {/* ✨ เพิ่มช่องกรอกจำนวนยาตรงนี้ */}
+                <input type="number" placeholder="จำนวนยาที่มี (เม็ด)" value={newStock} onChange={e => setNewStock(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
+                
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <select value={newMeal} onChange={e => setNewMeal(e.target.value)} style={{ padding: '10px', borderRadius: '5px', flex: 1 }}>{mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}</select>
                   <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{ padding: '10px', borderRadius: '5px', flex: 1 }} />
@@ -171,7 +193,18 @@ function App() {
                     {editingId === m.id ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: '8px' }}/><div style={{ display: 'flex', gap: '5px' }}><select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{ padding: '8px', flex: 1 }}><option value="เช้า">มื้อเช้า</option><option value="กลางวัน">มื้อกลางวัน</option><option value="เย็น">มื้อเย็น</option><option value="ก่อนนอน">มื้อก่อนนอน</option></select><input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ padding: '8px', flex: 1 }}/></div><div style={{ display: 'flex', gap: '5px' }}><button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>บันทึก</button><button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#888', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>ยกเลิก</button></div></div>
                     ) : (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div><b>{m.name}</b> <span style={{ color: '#bbb', fontSize: '14px' }}>(ของ: {m.owner})</span> <br/><span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span> <br/><span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span></div><div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}><button onClick={() => startEdit(m)} style={{ background: '#FFC107', border: 'none', borderRadius: '5px', padding: '5px 15px' }}>✏️ แก้ไข</button><button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 15px' }}>🗑️ ลบ</button></div></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          {/* ✨ แสดงจำนวนยาที่เหลือให้ Admin เห็น */}
+                          <b>{m.name}</b> <span style={{ color: m.stock <= 5 ? '#ff5252' : '#81C784', fontSize: '14px', fontWeight: 'bold' }}>(เหลือ {m.stock || 0} เม็ด)</span> <span style={{ color: '#bbb', fontSize: '14px' }}><br/>(ของ: {m.owner})</span> <br/>
+                          <span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span> <br/>
+                          <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
+                          <button onClick={() => startEdit(m)} style={{ background: '#FFC107', border: 'none', borderRadius: '5px', padding: '5px 15px' }}>✏️ แก้ไข</button>
+                          <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 15px' }}>🗑️ ลบ</button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))
@@ -180,7 +213,6 @@ function App() {
           </>
         ) : (
           <>
-            {/* ✨ ปุ่มเรียกผู้ดูแล (ฉุกเฉิน) */}
             <button onClick={handleCallAdmin} style={{ width: '100%', padding: '12px', background: '#E91E63', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', cursor: 'pointer' }}>
               🛎️ แจ้งเตือนเรียกผู้ดูแล
             </button>
@@ -193,7 +225,13 @@ function App() {
                   <h3 style={{ margin: '0 0 15px 0', color: '#FFC107', borderBottom: '2px solid #555', paddingBottom: '10px' }}>🍽️ ยามื้อ{mealName}</h3>
                   {medsInThisMeal.map(m => (
                     <div key={m.id} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '10px', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
-                      <div style={{ fontWeight: 'bold' }}>{m.name} <span style={{ float: 'right' }}>🕒 {m.time} น.</span></div>
+                      
+                      {/* ✨ แสดงจำนวนยาที่เหลือให้คนไข้เห็น */}
+                      <div style={{ fontWeight: 'bold' }}>
+                        {m.name} <span style={{ fontSize: '14px', color: m.stock <= 5 ? '#ff5252' : '#aaa' }}>(เหลือ {m.stock || 0} เม็ด)</span>
+                        <span style={{ float: 'right' }}>🕒 {m.time} น.</span>
+                      </div>
+                      
                       <div style={{ margin: '10px 0', color: m.status === 'กินแล้ว 💖' ? '#81C784' : '#FFB74D' }}>{m.status}</div>
                       <button onClick={() => handleTakeMed(m.id)} disabled={m.status === 'กินแล้ว 💖'} style={{ width: '100%', padding: '10px', background: m.status === 'กินแล้ว 💖' ? '#555' : '#4CAF50', color: 'white', border: 'none', borderRadius: '5px' }}>{m.status === 'กินแล้ว 💖' ? '✅ กินแล้ว' : 'กดเมื่อกินยา'}</button>
                     </div>
