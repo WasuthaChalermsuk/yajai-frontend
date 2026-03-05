@@ -3,6 +3,7 @@ import Swal from 'sweetalert2'
 
 function App() {
   const [meds, setMeds] = useState([])
+  const [patients, setPatients] = useState([]) // ✨ เก็บรายชื่อคนไข้ทั้งหมด
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
   const [targetPatient, setTargetPatient] = useState('')
@@ -12,7 +13,7 @@ function App() {
   const [authPassword, setAuthPassword] = useState('')
   const [isLoginMode, setIsLoginMode] = useState(true)
 
-  const API_URL = 'https://yajai-api.onrender.com/api';
+  const API_URL = 'https://yajai-api.onrender.com/api'; // (อย่าลืมเช็คว่าเป็น URL ของเพื่อนเองนะ)
 
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
@@ -26,25 +27,31 @@ function App() {
       .catch(() => handleLogout())
   }
 
+  // ✨ ดึงรายชื่อคนไข้มาใส่ Dropdown (เฉพาะ Admin)
+  const fetchPatients = () => {
+    fetch(`${API_URL}/users`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if(Array.isArray(data)) setPatients(data);
+      })
+  }
+
   useEffect(() => {
-    if (token) fetchMeds();
-  }, [token])
+    if (token) {
+      fetchMeds();
+      if (username === 'admin') fetchPatients();
+    }
+  }, [token, username])
 
   const handleAddMed = (e) => {
     e.preventDefault();
-    if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณาระบุชื่อคนไข้ ชื่อยา และเวลา');
-    
+    if (!newName || !newTime || !targetPatient) return Swal.fire('กรุณาเลือกคนไข้ ชื่อยา และเวลา');
     fetch(`${API_URL}/meds`, { 
-      method: 'POST', 
-      headers: getAuthHeaders(), 
-      body: JSON.stringify({ 
-        name: newName, 
-        time: newTime, 
-        patientName: targetPatient.trim() 
-      }) 
+      method: 'POST', headers: getAuthHeaders(), 
+      body: JSON.stringify({ name: newName, time: newTime, patientName: targetPatient }) 
     }).then(res => res.json()).then(data => { 
       setMeds([...meds, data.medicine]); 
-      setNewName(''); setNewTime(''); setTargetPatient('');
+      setNewName(''); setNewTime(''); 
       Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success');
     })
   }
@@ -61,6 +68,19 @@ function App() {
         setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖' } : med));
         Swal.fire({ icon: 'success', title: 'กินยาเรียบร้อย!', timer: 1000, showConfirmButton: false });
       })
+  }
+
+  // ✨ ฟังก์ชันรีเซ็ตเริ่มวันใหม่
+  const handleResetMeds = () => {
+    Swal.fire({ title: 'เริ่มวันใหม่?', text: "สถานะยาทุกคนจะกลับเป็น 'ยังไม่ได้กิน'", icon: 'question', showCancelButton: true }).then(res => {
+      if (res.isConfirmed) {
+        fetch(`${API_URL}/meds/reset/all`, { method: 'PUT', headers: getAuthHeaders() })
+        .then(() => {
+          fetchMeds();
+          Swal.fire('สำเร็จ', 'รีเซ็ตสถานะยาทั้งหมดแล้ว', 'success');
+        })
+      }
+    })
   }
 
   const handleSendLine = () => {
@@ -94,7 +114,7 @@ function App() {
   if (!token) {
     return (
       <div style={{ padding: '20px', maxWidth: '400px', margin: '50px auto', background: '#333', borderRadius: '15px', textAlign: 'center', color: 'white' }}>
-        <h2>{isLoginMode ? '🔐 เข้าสู่ระบบ' : '📝 สมัครสมาชิก'}</h2>
+        <h2>{isLoginMode ? '🔐 เข้าสู่ระบบ YaJai' : '📝 สมัครสมาชิก YaJai'}</h2>
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input type="text" placeholder="ชื่อผู้ใช้" value={authUsername} onChange={e => setAuthUsername(e.target.value)} style={{ padding: '12px', borderRadius: '8px' }} />
           <input type="password" placeholder="รหัสผ่าน" value={authPassword} onChange={e => setAuthPassword(e.target.value)} style={{ padding: '12px', borderRadius: '8px' }} />
@@ -120,18 +140,37 @@ function App() {
           <div style={{ background: '#303f9f', padding: '20px', borderRadius: '15px', marginBottom: '20px' }}>
             <h3 style={{ marginTop: 0 }}>➕ สั่งยาให้คนไข้</h3>
             <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input type="text" placeholder="ชื่อคนไข้ (เช่น userA)" value={targetPatient} onChange={e => setTargetPatient(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
+              
+              {/* ✨ เปลี่ยนจากช่องพิมพ์ เป็น Dropdown ให้เลือกชื่อคนไข้ */}
+              <select value={targetPatient} onChange={e => setTargetPatient(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }}>
+                <option value="">-- เลือกคนไข้ --</option>
+                {patients.length === 0 ? <option disabled>ไม่มีคนไข้ในระบบ</option> : patients.map(p => (
+                  <option key={p} value={p}>คุณ {p}</option>
+                ))}
+              </select>
+
               <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
               <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
               <button type="submit" style={{ background: '#FFC107', color: '#333', padding: '10px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>บันทึก</button>
             </form>
           </div>
+          
           <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
-            <h3>📋 รายการยาที่สั่ง</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>📋 รายการยาทั้งหมด</h3>
+              {/* ✨ ปุ่มรีเซ็ตสำหรับเริ่มวันใหม่ */}
+              <button onClick={handleResetMeds} style={{ background: '#2196F3', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer' }}>🔄 เริ่มวันใหม่</button>
+            </div>
+
             {meds.map(m => (
               <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #555', padding: '10px 0' }}>
-                <div><b>{m.name}</b> (ให้ {m.owner}) - {m.time}</div>
-                <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px' }}>ลบ</button>
+                <div>
+                  <b>{m.name}</b> (ให้ {m.owner}) <br/>
+                  <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>
+                    {m.time} น. - {m.status}
+                  </span>
+                </div>
+                <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', height: 'fit-content' }}>ลบ</button>
               </div>
             ))}
           </div>
@@ -139,9 +178,9 @@ function App() {
       ) : (
         <>
           <div style={{ background: '#444', padding: '20px', borderRadius: '15px', marginBottom: '20px', textAlign: 'center' }}>
-            <h3>📊 สรุปการกินยา</h3>
+            <h3>📊 สรุปการกินยาวันนี้</h3>
             <div style={{ background: '#222', height: '20px', borderRadius: '10px', overflow: 'hidden', margin: '15px 0' }}>
-              <div style={{ width: `${progressPercent}%`, background: '#4CAF50', height: '100%' }}></div>
+              <div style={{ width: `${progressPercent}%`, background: '#4CAF50', height: '100%', transition: '0.5s' }}></div>
             </div>
             <p style={{ color: '#81C784', fontWeight: 'bold' }}>{progressPercent}% (กินแล้ว {takenMeds}/{totalMeds})</p>
             <button onClick={handleSendLine} style={{ width: '100%', background: '#00B900', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold' }}>📱 ส่งรายงานเข้า LINE</button>
@@ -153,7 +192,7 @@ function App() {
                 <div key={m.id} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '10px', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
                   <div style={{ fontWeight: 'bold' }}>{m.name} <span style={{ float: 'right' }}>🕒 {m.time} น.</span></div>
                   <div style={{ margin: '10px 0', color: m.status === 'กินแล้ว 💖' ? '#81C784' : '#FFB74D' }}>{m.status}</div>
-                  <button onClick={() => handleTakeMed(m.id)} disabled={m.status === 'กินแล้ว 💖'} style={{ width: '100%', padding: '10px', background: m.status === 'กินแล้ว 💖' ? '#555' : '#4CAF50', color: 'white', border: 'none', borderRadius: '5px' }}>
+                  <button onClick={() => handleTakeMed(m.id)} disabled={m.status === 'กินแล้ว 💖'} style={{ width: '100%', padding: '10px', background: m.status === 'กินแล้ว 💖' ? '#555' : '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: m.status === 'กินแล้ว 💖' ? 'default' : 'pointer' }}>
                     {m.status === 'กินแล้ว 💖' ? 'กินแล้ว' : 'กดเมื่อกินยา'}
                   </button>
                 </div>
