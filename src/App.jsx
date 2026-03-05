@@ -6,7 +6,7 @@ function App() {
   const [patients, setPatients] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newTime, setNewTime] = useState('')
-  const [newMeal, setNewMeal] = useState('เช้า') // ✨ เก็บค่ามื้ออาหาร
+  const [newMeal, setNewMeal] = useState('เช้า')
   const [targetPatient, setTargetPatient] = useState('')
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [username, setUsername] = useState(localStorage.getItem('username') || '')
@@ -19,6 +19,9 @@ function App() {
   const [editName, setEditName] = useState('')
   const [editTime, setEditTime] = useState('')
   const [editMeal, setEditMeal] = useState('เช้า')
+
+  // ✨ State สำหรับตัวกรองคนไข้ (Filter) ของ Admin
+  const [filterPatient, setFilterPatient] = useState('') 
 
   const API_URL = 'https://yajai-api.onrender.com/api'; 
 
@@ -57,12 +60,10 @@ function App() {
     })
   }
 
-  // ✨ ฟังก์ชันเปิดโหมดแก้ไข
   const startEdit = (med) => {
     setEditingId(med.id); setEditName(med.name); setEditTime(med.time); setEditMeal(med.meal || 'เช้า');
   }
 
-  // ✨ ฟังก์ชันบันทึกการแก้ไข
   const handleSaveEdit = (id) => {
     fetch(`${API_URL}/meds/edit/${id}`, {
       method: 'PUT', headers: getAuthHeaders(),
@@ -108,7 +109,7 @@ function App() {
     })
   }
 
-  const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); }
+  const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); setFilterPatient(''); }
 
   if (!token) {
     return (
@@ -124,8 +125,10 @@ function App() {
     )
   }
 
-  // ✨ จัดกลุ่มยาตามมื้ออาหาร (สำหรับหน้าคนไข้)
   const mealsCategory = ['เช้า', 'กลางวัน', 'เย็น', 'ก่อนนอน'];
+
+  // ✨ ตัวแปรเก็บรายการยาที่ผ่านการกรองแล้ว (สำหรับ Admin)
+  const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
     <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: 'white' }}>
@@ -158,44 +161,57 @@ function App() {
           </div>
           
           <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0 }}>📋 จัดการยาทั้งหมด</h3>
-              <button onClick={handleResetMeds} style={{ background: '#2196F3', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer' }}>🔄 เริ่มวันใหม่</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0 }}>📋 จัดการยาทั้งหมด</h3>
+                <button onClick={handleResetMeds} style={{ background: '#2196F3', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer' }}>🔄 เริ่มวันใหม่</button>
+              </div>
+              
+              {/* ✨ ช่อง Dropdown สำหรับ Filter คนไข้ */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px' }}>
+                <span style={{ fontSize: '14px' }}>🔍 กรองดูคนไข้:</span>
+                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}>
+                  <option value="">-- ดูทุกคนรวมกัน --</option>
+                  {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
+                </select>
+              </div>
             </div>
 
-            {meds.map(m => (
-              <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0' }}>
-                {editingId === m.id ? (
-                  // โหมดแก้ไข
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: '8px' }}/>
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{ padding: '8px', flex: 1 }}>
-                        {mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}
-                      </select>
-                      <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ padding: '8px', flex: 1 }}/>
+            {filteredAdminMeds.length === 0 ? (
+               <p style={{ textAlign: 'center', color: '#bbb', margin: '20px 0' }}>ไม่มีรายการยาของคนไข้ที่เลือก</p>
+            ) : (
+              filteredAdminMeds.map(m => (
+                <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0' }}>
+                  {editingId === m.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: '8px' }}/>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{ padding: '8px', flex: 1 }}>
+                          {mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}
+                        </select>
+                        <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ padding: '8px', flex: 1 }}/>
+                      </div>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>บันทึก</button>
+                        <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#888', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>ยกเลิก</button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>บันทึก</button>
-                      <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#888', color: 'white', padding: '8px', border: 'none', borderRadius: '5px' }}>ยกเลิก</button>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <b>{m.name}</b> <span style={{ color: '#bbb', fontSize: '14px' }}>(ของ: {m.owner})</span> <br/>
+                        <span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span> <br/>
+                        <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
+                        <button onClick={() => startEdit(m)} style={{ background: '#FFC107', border: 'none', borderRadius: '5px', padding: '5px 15px', cursor: 'pointer' }}>✏️ แก้ไข</button>
+                        <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 15px', cursor: 'pointer' }}>🗑️ ลบ</button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  // โหมดแสดงผลปกติ
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <b>{m.name}</b> <span style={{ color: '#bbb', fontSize: '14px' }}>(ของ: {m.owner})</span> <br/>
-                      <span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span> <br/>
-                      <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
-                      <button onClick={() => startEdit(m)} style={{ background: '#FFC107', border: 'none', borderRadius: '5px', padding: '5px 15px', cursor: 'pointer' }}>✏️ แก้ไข</button>
-                      <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 15px', cursor: 'pointer' }}>🗑️ ลบ</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </>
       ) : (
@@ -204,10 +220,9 @@ function App() {
             <button onClick={handleSendLine} style={{ width: '100%', background: '#00B900', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold' }}>📱 ส่งรายงานการกินยาเข้า LINE</button>
           </div>
           
-          {/* แสดงผลแยกตามมื้ออาหาร */}
           {mealsCategory.map(mealName => {
             const medsInThisMeal = meds.filter(m => (m.meal || 'เช้า') === mealName);
-            if (medsInThisMeal.length === 0) return null; // ถ้ามื้อไหนไม่มียา ไม่ต้องแสดง
+            if (medsInThisMeal.length === 0) return null; 
 
             return (
               <div key={mealName} style={{ background: '#444', padding: '15px', borderRadius: '15px', marginBottom: '15px' }}>
