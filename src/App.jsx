@@ -413,11 +413,11 @@ function App() {
         }}>
           
           {/* หัวข้อแชท */}
-          <div style={{ background: '#1976D2', padding: '20px 15px 15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+          <div style={{ background: '#1976D2', padding: '20px 15px 15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgb(255, 255, 255)' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                  <b style={{ whiteSpace: 'nowrap' }}>แชทกับ:</b>
-                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none', color: '#ffffff' }}>
+                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none', color: '#000000' }}>
                    {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                  </select>
                </div>
