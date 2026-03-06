@@ -104,7 +104,7 @@ function App() {
 
   // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
-    if (token) { 
+    if (token) {
         fetchMeds(); 
         fetchHistory(); 
         if (username === 'admin') fetchPatients(); 
@@ -375,6 +375,20 @@ function App() {
               }
               <hr style={{ borderColor: '#555', margin: '20px 0' }} />
               <h3 style={{ color: '#FF9800' }}>📓 บันทึกอาการของคนไข้</h3>
+              
+              {/* --- เริ่มโค้ดกล่องเลือกชื่อคนไข้ --- */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+                <span style={{ fontSize: '14px', color: 'white' }}>🔍 ดูอาการของ:</span>
+                <select 
+                  value={filterPatient} 
+                  onChange={e => setFilterPatient(e.target.value)} 
+                  style={{ padding: '6px', borderRadius: '5px', flex: 1 }}
+                >
+                  <option value="">-- ดูทุกคน --</option>
+                  {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
+                </select>
+              </div>
+              {/* --- จบโค้ดกล่องเลือกชื่อคนไข้ --- */}
             </>
           )}
 
