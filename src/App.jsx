@@ -77,22 +77,27 @@ function App() {
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
   
   const fetchDiaries = () => {
-  // 1. กำหนดว่ากำลังดูประวัติของใคร (ถ้าเป็นแอดมินให้ใช้ filterPatient ถ้าเป็นคนไข้ให้ใช้ username ตัวเอง)
-  // (อ้างอิงจากตัวแปรในรูป useEffect ที่เพื่อนเขียนไว้)
-  const target = filterPatient || username; 
+  let target = '';
   
+  // จัดการเงื่อนไขว่าใครกำลังขอดูข้อมูล
+  if (username === 'admin') {
+      // ถ้าแอดมินล็อกอิน ให้ใช้ชื่อคนไข้ที่เลือก (filterPatient) หรือถ้าไม่ได้เลือกให้ดึง 'all'
+      target = filterPatient || 'all'; 
+  } else {
+      // ถ้าคนไข้ล็อกอิน ให้ดึงข้อมูลของตัวเองเท่านั้น
+      target = username;
+  }
+
   if (!target) return;
 
-  // 2. ยิงไปหา Backend บรรทัด 198 (app.get('/api/diary/:target'))
+  // ส่งคำขอไปหา Backend
   fetch(`${API_URL}/diary/${target}`, {
     method: 'GET',
     headers: getAuthHeaders()
   })
     .then(res => res.json())
     .then(data => {
-      // 3. เอาข้อมูลที่ได้มาเซ็ตลง State (สมมติว่าเพื่อนตั้งชื่อ State ไว้ว่า diaries นะครับ)
-      // ถ้าไม่ได้ตั้งชื่อว่า diaries ให้แก้เป็น set... ตามที่เพื่อนตั้งไว้
-      setDiaries(data); 
+      setDiaries(data); // นำข้อมูลไปใส่ State
     })
     .catch(err => console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err));
 };
