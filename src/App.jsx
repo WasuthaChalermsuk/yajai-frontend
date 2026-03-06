@@ -17,7 +17,7 @@ function App() {
   const [meds, setMeds] = useState([])
   const [patients, setPatients] = useState([]) 
   const [history, setHistory] = useState([])
-  const [activeTab, setActiveTab] = useState('meds') // ควบคุมหน้าจอ: meds, history, chat
+  const [activeTab, setActiveTab] = useState('meds') 
   const [pushEnabled, setPushEnabled] = useState(Notification.permission === 'granted')
 
   // ระบบเพิ่มยา
@@ -35,7 +35,6 @@ function App() {
   const [editTime, setEditTime] = useState('')
   const [editMeal, setEditMeal] = useState('เช้า')
 
-  // ฟังก์ชันสำหรับกดปุ่ม "แก้ไข" เพื่อดึงข้อมูลยาเดิมมาแสดงในฟอร์ม
   const startEdit = (med) => {
     setEditingId(med.id);
     setEditName(med.name);
@@ -43,16 +42,12 @@ function App() {
     setEditMeal(med.meal || 'เช้า'); 
   };
 
-  // ฟังก์ชันสำหรับกดปุ่ม "บันทึก" 
   const handleSaveEdit = (id) => {
-    // อัปเดตข้อมูลยาใน State meds
     const updatedMeds = meds.map(med =>
       med.id === id ? { ...med, name: editName, time: editTime, meal: editMeal } : med
     );
-    setMeds(updatedMeds); // บันทึกข้อมูลใหม่ลงไป
-    setEditingId(null);   // ปิดหน้าต่างแก้ไข
-    
-    // ปล. ถ้าเพื่อนมีการต่อ Database หรือ Backend ด้วย อย่าลืมใส่โค้ดอัปเดต API ตรงนี้นะ
+    setMeds(updatedMeds); 
+    setEditingId(null);   
   };
 
   // ระบบแชท
@@ -76,34 +71,37 @@ function App() {
   const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` })
   const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); setActiveTab('meds'); setPushEnabled(false); }
 
-
   // ฟังก์ชันโหลดข้อมูลหลัก
   const fetchMeds = () => { fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(setMeds).catch(() => handleLogout()) }
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) { setPatients(data); setChatTarget(data[0] || ''); } }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
   
-  // ดึงข้อมูลบันทึกอาการ
-  const fetchDiaries = () => {
-  // เปลี่ยนเป็น /diaries ให้ตรงกันทั้งหมด
-  fetch(`${API_URL}/diaries`, { headers: getAuthHeaders() })
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data)) {
-        if (username === 'admin') {
-          if (filterPatient) {
-            // กรองตามชื่อที่เลือกใน Dropdown
-            const filtered = data.filter(d => d.owner === filterPatient);
-            setDiaries(filtered);
-          } else {
-            setDiaries(data); // ถ้าไม่กรอง ให้โชว์ทั้งหมด
-          }
-        } else {
-          setDiaries(data); // คนไข้ดูของตัวเอง
-        }
+  const fetchDiaries = async () => {
+    try {
+      const response = await fetch(`${API_URL}/diaries`, { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error(`โหลดข้อมูลไม่ได้ (${response.status})`);
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.error("❌ ข้อมูลไม่ใช่ Array:", data);
+        setDiaries([]); 
+        return;
       }
-    })
-    .catch(err => console.error("Error fetching diaries:", err));
-};
+
+      if (username === 'admin') {
+        if (filterPatient) {
+          setDiaries(data.filter(d => d.owner === filterPatient));
+        } else {
+          setDiaries(data); 
+        }
+      } else {
+        setDiaries(data);
+      }
+    } catch (error) {
+      console.error("❌ Fetch Diaries Error:", error);
+    }
+  };
 
   // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
@@ -117,14 +115,12 @@ function App() {
     } 
   }, [token, username])
 
-  // โหลดบันทึกอาการใหม่ทุกครั้งที่แอดมินเปลี่ยนตัวกรองคนไข้
   useEffect(() => {
   if (token) {
     setTimeout(() => fetchDiaries(), 0);
   }
 }, [token, filterPatient, username]);
 
-  // ระบบดึงแชทอัตโนมัติ (Polling) ทุกๆ 3 วินาที
   useEffect(() => {
     let interval;
     if (activeTab === 'chat' && chatTarget) {
@@ -140,10 +136,8 @@ function App() {
     return () => clearInterval(interval);
   }, [activeTab, chatTarget]);
 
-  // เลื่อนจอลงไปข้อความล่าสุดอัตโนมัติ
   useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
 
-  // ฟังก์ชันพิมพ์ด้วยเสียง 🎙️
   const handleVoiceTyping = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return Swal.fire('ขออภัย', 'เบราว์เซอร์ของคุณไม่รองรับระบบสั่งงานด้วยเสียงครับ ลองใช้ Chrome ดูนะ', 'error');
@@ -162,29 +156,33 @@ function App() {
     recognition.onerror = () => Swal.fire('เกิดข้อผิดพลาด', 'จับเสียงไม่ได้ครับ ลองใหม่อีกครั้งนะ', 'error');
   };
 
-  // ฟังก์ชันบันทึกอาการ
-  const handleSaveDiary = (e) => {
-  e.preventDefault();
-  if (!diaryInput.trim()) return;
+  // รวมฟังก์ชันบันทึกอาการที่ถูกต้อง (ลองใช้ /diaries ตามคอมเมนต์ของเพื่อน)
+  const handleSaveDiary = async (e) => {
+    e.preventDefault();
+    if (!diaryInput.trim()) return;
 
-  // เปลี่ยนจาก /diary เป็น /diaries ให้ตรงกับขาแอดมินที่ไปดึงมา
-  fetch(`${API_URL}/diaries`, { 
-    method: 'POST', 
-    headers: getAuthHeaders(), 
-    body: JSON.stringify({ note: diaryInput }) 
-  })
-    .then(res => {
-      if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
-      return res.json();
-    })
-    .then(() => { 
+    try {
+      const response = await fetch(`${API_URL}/diaries`, { 
+        method: 'POST', 
+        headers: getAuthHeaders(), 
+        body: JSON.stringify({ note: diaryInput }) 
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`เซิร์ฟเวอร์ตอบกลับ: ${response.status} ${errText}`);
+      }
+
       setDiaryInput(''); 
       Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); 
-      fetchDiaries(); // สั่งให้โหลดใหม่ทันทีหลังบันทึก
-    })
-    .catch(err => Swal.fire('ผิดพลาด', 'ไม่สามารถส่งข้อมูลได้', 'error'));
-};
-  // ฟังก์ชันส่งแชท
+      fetchDiaries(); 
+      
+    } catch (error) {
+      console.error("❌ Save Diary Error:", error);
+      Swal.fire('เกิดข้อผิดพลาด!', `ส่งข้อมูลไม่ได้\n${error.message}`, 'error');
+    }
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim() || !chatTarget) return;
@@ -195,7 +193,6 @@ function App() {
     }).then(() => { setChatInput(''); });
   }
 
-  // ฟังก์ชันเปิดแจ้งเตือนแบบสมบูรณ์ 🔔
   const handleEnablePush = async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return Swal.fire('เสียใจด้วย', 'เบราว์เซอร์ไม่รองรับ', 'error');
     const permission = await Notification.requestPermission();
@@ -248,7 +245,6 @@ function App() {
         </div>
       </div>
 
-      {/* เมนูนำทาง 3 แท็บ */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button onClick={() => setActiveTab('meds')} style={{ flex: 1, padding: '10px', background: activeTab === 'meds' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💊 {username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</button>
         <button onClick={() => setActiveTab('history')} style={{ flex: 1, padding: '10px', background: activeTab === 'history' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
@@ -263,17 +259,13 @@ function App() {
         </div>
       )}
 
-      {/* ================= แท็บ 1: จัดการยา ================= */}
       {activeTab === 'meds' && (
         username === 'admin' ? (
           <>
             <div style={{ background: '#303f9f', padding: '20px', borderRadius: '15px', marginBottom: '20px' }}>
               <h3 style={{ marginTop: 0 }}>➕ สั่งยาให้คนไข้</h3>
               <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <select 
-  value={filterPatient} 
-  onChange={e => {
-    setFilterPatient(e.target.value);}}style={{ padding: '6px', borderRadius: '5px', flex: 1 }}>
+                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}>
                   <option value="">-- เลือกคนไข้ --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
                 <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
@@ -298,7 +290,6 @@ function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}><span style={{ fontSize: '14px' }}>🔍 กรองดูคนไข้:</span><select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}><option value="">-- ดูทุกคน --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}</select></div>
               {filteredAdminMeds.map(m => (
                 <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0' }}>
-                  {/* ถ้ารายการนี้กำลังถูกกดแก้ไขอยู่ */}
                   {editingId === m.id ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#555', padding: '15px', borderRadius: '10px' }}>
                       <b style={{ color: '#FFC107' }}>✏️ แก้ไขข้อมูลยา</b>
@@ -315,7 +306,6 @@ function App() {
                       </div>
                     </div>
                   ) : (
-                    /* ถ้าไม่ได้กดแก้ไข ให้แสดงข้อมูลยาปกติ */
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                         {m.imageUrl ? <img src={m.imageUrl} alt="med" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }} /> : <div style={{ width: '50px', height: '50px', background: '#555', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>💊</div>}
@@ -360,19 +350,15 @@ function App() {
         )
       )}
 
-      {/* ================= แท็บ 2: ประวัติ / บันทึกอาการ ================= */}
       {activeTab === 'history' && (
         <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h3 style={{ margin: 0 }}>{username === 'admin' ? '📊 สถิติ & ประวัติ' : '📓 บันทึกอาการ'}</h3>
-            
-            {/* ปุ่ม Print ให้เฉพาะ Admin เห็น */}
             {username === 'admin' && (
               <button onClick={() => window.print()} style={{ background: '#9C27B0', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ Save เป็น PDF</button>
             )}
           </div>
 
-          {/* 📊 ส่วนนี้ให้ "แอดมิน" เห็นคนเดียว (ประวัติการกินยา) */}
           {username === 'admin' && (
             <>
               {history.length === 0 ? <p style={{ color: '#bbb' }}>ยังไม่มีประวัติการกินยา</p> : 
@@ -381,7 +367,6 @@ function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <b>📅 {h.date}</b><span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>
                     </div>
-                    {/* กราฟแถบสี (CSS Bar Chart) */}
                     <div style={{ background: '#555', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
                         <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
                     </div>
@@ -394,7 +379,6 @@ function App() {
             </>
           )}
 
-          {/* 📓 ส่วนสมุดจดอาการ (แสดงให้คนไข้เห็น และให้คนไข้พิมพ์ได้) */}
           {username !== 'admin' && (
               <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                   <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งผู้ดูแลได้เลย" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} />
@@ -408,17 +392,14 @@ function App() {
               <div key={i} style={{ background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '8px', fontSize: '14px' }}>
                   <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
                   <div>💬 {d.note}</div>
-                  {/* แสดงชื่อคนไข้ให้แอดมินรู้ว่าใครเป็นคนพิมพ์ */}
                   {username === 'admin' && <div style={{ fontSize: '12px', color: '#90CAF9', marginTop: '4px' }}>- คุณ {d.owner}</div>}
               </div>
           ))}
         </div>
       )}
 
-      {/* ================= แท็บ 3: แชท ================= */}
       {activeTab === 'chat' && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '60vh', background: '#444', borderRadius: '15px', overflow: 'hidden' }}>
-          {/* ส่วนหัวแชท */}
           <div style={{ background: '#303f9f', padding: '15px', borderBottom: '1px solid #555' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -432,7 +413,6 @@ function App() {
             )}
           </div>
 
-          {/* พื้นที่แสดงข้อความ */}
           <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#222' }}>
              {messages.length === 0 ? (
                <div style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>เริ่มบทสนทนาได้เลย! 👋</div>
@@ -451,7 +431,6 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          {/* ช่องพิมพ์ (แท็บแชท) */}
           <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '10px', background: '#333', gap: '10px' }}>
              <button type="button" onClick={handleVoiceTyping} style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}>🎙️</button>
              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความ หรือกดไมค์..." style={{ flex: 1, padding: '10px', borderRadius: '20px', border: 'none', outline: 'none' }} />
@@ -463,4 +442,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
