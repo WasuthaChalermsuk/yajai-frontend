@@ -204,18 +204,19 @@ function App() {
   const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
-    // ✨ ปรับสีพื้นหลังแอปทั้งหมดเป็นสีฟ้าอ่อน-เทา (#F0F4F8) ตัวอักษรสีเข้ม (#333)
-    <div style={{ backgroundColor: '#F0F4F8', padding: '20px', paddingBottom: '90px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: '#333', minHeight: '100vh', position: 'relative' }}>
+    // ✨ 1. เปลี่ยน maxWidth เป็น 1000px ให้ขยายตามจอคอม
+    <div style={{ backgroundColor: '#F0F4F8', padding: '20px', paddingBottom: '90px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif', color: '#333', minHeight: '100vh', position: 'relative' }}>
       
-      {/* ส่วนหัวแอป */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <h2 style={{ margin: 0, color: '#1976D2', display: 'flex', alignItems: 'center', gap: '5px' }}>YaJai 💊</h2>
-        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
-          <button onClick={handleLogout} style={{ background: '#FFF0F0', color: '#E53935', border: '1px solid #FFCDD2', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold' }}>ออก</button>
+      {/* ✨ 2. ส่วนหัวแอป (ซ่อนไว้เมื่อ activeTab เป็น 'chat') */}
+      {activeTab !== 'chat' && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+          <h2 style={{ margin: 0, color: '#1976D2', display: 'flex', alignItems: 'center', gap: '5px' }}>YaJai 💊</h2>
+          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
+            <button onClick={handleLogout} style={{ background: '#FFF0F0', color: '#E53935', border: '1px solid #FFCDD2', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold' }}>ออก</button>
+          </div>
         </div>
-      </div>
-
+      )}
       {!pushEnabled && activeTab === 'meds' && (
         <div style={{ background: '#FFF3E0', border: '1px solid #FFE0B2', padding: '15px', borderRadius: '15px', marginBottom: '20px', textAlign: 'center' }}>
           <p style={{ margin: '0 0 10px 0', color: '#E65100', fontSize: '14px' }}>คุณยังไม่ได้เปิดรับการแจ้งเตือนเตือนกินยา!</p>
@@ -395,24 +396,22 @@ function App() {
       {activeTab === 'chat' && (
         <div style={{
           position: 'fixed',
-          top: '90px',     // เว้นระยะให้ Header ด้านบน
-          bottom: '68px',  // เว้นระยะให้เมนูด้านล่าง
+          top: '0',        // ✨ เปลี่ยนเป็น 0 เพื่อให้ดันขึ้นไปติดขอบบนสุดของจอ
+          bottom: '68px',
           left: '0',
           right: '0',
-          maxWidth: '500px',
+          maxWidth: '1000px', // ✨ เปลี่ยนให้ขยายตามจอคอม
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'white',
-          borderTopLeftRadius: '20px',
-          borderTopRightRadius: '20px',
-          overflow: 'hidden',
+          overflow: 'hidden', // เอา border-radius ออกเวลาติดขอบบนจะสวยกว่า
           boxShadow: '0 -4px 15px rgba(0,0,0,0.1)',
-          zIndex: 50 // ดันให้ลอยอยู่หน้าสุด
+          zIndex: 50
         }}>
           
-          {/* หัวข้อแชท (ล็อคติดขอบบนของกล่อง) */}
-          <div style={{ background: '#1976D2', padding: '15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+          {/* หัวข้อแชท (เพิ่ม padding-top ให้ไม่ชิดขอบมือถือเกินไป) */}
+          <div style={{ background: '#1976D2', padding: '20px 15px 15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                  <b style={{ whiteSpace: 'nowrap' }}>แชทกับ:</b>
@@ -425,7 +424,7 @@ function App() {
             )}
           </div>
 
-          {/* พื้นที่ข้อความ (เลื่อนได้แค่ตรงนี้) */}
+          {/* พื้นที่ข้อความ */}
           <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F0F4F8' }}>
              {messages.length === 0 ? (
                <div style={{ textAlign: 'center', color: '#888', marginTop: '30px', background: 'white', padding: '15px', borderRadius: '10px', alignSelf: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>เริ่มบทสนทนาได้เลย! 👋</div>
@@ -444,7 +443,7 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          {/* ช่องพิมพ์ข้อความ (ล็อคติดขอบล่างของกล่อง) */}
+          {/* ช่องพิมพ์ข้อความ */}
           <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE', zIndex: 51 }}>
              <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🎙️</button>
              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA' }} />
@@ -454,13 +453,13 @@ function App() {
         </div>
       )}
 
-      {/* เมนูด้านล่าง (Bottom Navigation) โทนสว่าง */}
+      {/* เมนูด้านล่าง (Bottom Navigation) */}
       <div style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
-        maxWidth: '500px',
+        maxWidth: '1000px', // ✨ เปลี่ยนตรงนี้เป็น 1000px ด้วย
         margin: '0 auto',
         background: 'white',
         display: 'flex',
