@@ -79,3 +79,48 @@ body, html {
   display: flex;
   justify-content: center; /* ดันแอปเราให้อยู่ตรงกลางจอคอม */
 }
+
+/* ใน App.css หรือ index.css ของนาย */
+
+/* 📦 1. กล่องนอกสุดคลุมทั้งหน้าจอ (จัดการพื้นหลังดำและการจัดกึ่งกลาง) */
+.app-body-wrapper {
+  background-color: #212121; /* สีพื้นหลังที่คุณเห็นในรูป (เปลี่ยนได้ตามใจชอบ) */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center; /* จัดกึ่งกลางแนวนอน */
+  align-items: center;    /* จัดกึ่งกลางแนวตั้ง */
+  box-sizing: border-box;
+}
+
+/* 📱 2. กล่องแอปพลิเคชัน (YaJai container ที่มีพื้นหลังสีขาว) */
+.app-container {
+  background-color: white; /* พื้นหลังแอป */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  box-sizing: border-box;
+  
+  /* ✨ ส่วนที่ต้องแก้เพื่อให้ยืดหยุ่น ✨ */
+  width: 100%;             /* กางเต็มความกว้างที่ได้มา */
+  max-width: 450px;       /* จำกัดความกว้างสูงสุดไว้แค่นี้สำหรับจอเล็ก (มือถือ) */
+}
+
+/* 📱 Tablet Point: ปรับความกว้างสำหรับ iPad (iPad portrait กว้าง 768px+) */
+@media (min-width: 768px) {
+  .app-container {
+    max-width: 600px; /* ✨ ✨ ✨ เปลี่ยนค่าตรงนี้! ให้แอปบน tablet ดูเต็มขึ้น ✨ ✨ ✨ */
+    border-radius: 30px; /* ปรับมุมให้โค้งขึ้นตามขนาดจอ */
+    padding: 40px;
+  }
+}
+
+/* 💻 Desktop Point: ปรับความกว้างสำหรับจอคอม (กว้าง 1024px+) */
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 800px; /* ✨ ✨ ✨ เปลี่ยนค่าตรงนี้! ให้แอปบนจอคอมดูกางขึ้นไปอีก ✨ ✨ ✨ */
+  }
+}
