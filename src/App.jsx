@@ -76,32 +76,26 @@ function App() {
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) { setPatients(data); setChatTarget(data[0] || ''); } }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
   
-  const fetchDiaries = async () => {
-    try {
-      const response = await fetch(`${API_URL}/diaries`, { headers: getAuthHeaders() });
-      if (!response.ok) throw new Error(`โหลดข้อมูลไม่ได้ (${response.status})`);
-      
-      const data = await response.json();
-      
-      if (!Array.isArray(data)) {
-        console.error("❌ ข้อมูลไม่ใช่ Array:", data);
-        setDiaries([]); 
-        return;
-      }
+  const fetchDiaries = () => {
+  // 1. กำหนดว่ากำลังดูประวัติของใคร (ถ้าเป็นแอดมินให้ใช้ filterPatient ถ้าเป็นคนไข้ให้ใช้ username ตัวเอง)
+  // (อ้างอิงจากตัวแปรในรูป useEffect ที่เพื่อนเขียนไว้)
+  const target = filterPatient || username; 
+  
+  if (!target) return;
 
-      if (username === 'admin') {
-        if (filterPatient) {
-          setDiaries(data.filter(d => d.owner === filterPatient));
-        } else {
-          setDiaries(data); 
-        }
-      } else {
-        setDiaries(data);
-      }
-    } catch (error) {
-      console.error("❌ Fetch Diaries Error:", error);
-    }
-  };
+  // 2. ยิงไปหา Backend บรรทัด 198 (app.get('/api/diary/:target'))
+  fetch(`${API_URL}/diary/${target}`, {
+    method: 'GET',
+    headers: getAuthHeaders()
+  })
+    .then(res => res.json())
+    .then(data => {
+      // 3. เอาข้อมูลที่ได้มาเซ็ตลง State (สมมติว่าเพื่อนตั้งชื่อ State ไว้ว่า diaries นะครับ)
+      // ถ้าไม่ได้ตั้งชื่อว่า diaries ให้แก้เป็น set... ตามที่เพื่อนตั้งไว้
+      setDiaries(data); 
+    })
+    .catch(err => console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err));
+};
 
   // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
