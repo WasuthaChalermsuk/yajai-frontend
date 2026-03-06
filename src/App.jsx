@@ -225,7 +225,17 @@ function App() {
     return (
 <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
   <div style={{ width: '100%', minHeight: '100vh', background: 'white', padding: '20px', textAlign: 'center' , boxSizing: 'border-box'}}>
-          <h1 style={{ color: '#1976D2', marginBottom: '10px' }}>YaJai 💊</h1>
+          <h1 style={{ color: '#1976D2', marginBottom: '10px' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+  <img 
+    src="./logo.png" // 💡 1. ใส่ path รูปโลโก้ของเพื่อนตรงนี้
+    alt="YaJai Logo" 
+    style={{ 
+      width: '120px',    // 💡 2. ปรับขนาดความกว้างตามต้องการ
+      height: 'auto',    // ให้ความสูงปรับตามสัดส่วนอัตโนมัติ รูปจะได้ไม่บี้
+      objectFit: 'contain' // ป้องกันรูปโดนตัดขอบ
+    }} 
+  />
+</div></h1>
           <h3 style={{ color: '#555', marginBottom: '20px' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกใหม่'}</h3>
           <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <input type="text" placeholder="ชื่อผู้ใช้" value={authUsername} onChange={e => setAuthUsername(e.target.value)} style={inputStyle} />
@@ -491,7 +501,7 @@ function App() {
                         />
                         )}
                         </div>
-                        
+
                      <div style={{ fontSize: '10px', color: isMe ? '#BBDEFB' : '#999', textAlign: 'right', marginTop: '6px' }}>{new Date(msg.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
                    </div>
                  )
