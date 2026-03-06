@@ -473,27 +473,25 @@ function App() {
                    <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', background: isMe ? '#1976D2' : 'white', color: isMe ? 'white' : '#333', padding: '12px 16px', borderRadius: '18px', borderBottomRightRadius: isMe ? '4px' : '18px', borderBottomLeftRadius: !isMe ? '4px' : '18px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                      {!isMe && <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', fontWeight: 'bold' }}>{msg.sender}</div>}
                      <div style={{ wordBreak: 'break-word', fontSize: '15px' }}>
-  {/* 1. แสดงข้อความตัวอักษร (ถ้ามี) */}
-  {msg.text}
-
-  {/* 2. ✨ ถ้าใน Database มีรูป (msg.image) ให้วาดรูปออกมาด้วย */}
-  {msg.image && (
-    <img 
-      src={msg.image} 
-      alt="chat-attachment"
-      style={{ 
-        display: 'block', 
-        maxWidth: '100%', // ให้รูปกว้างไม่เกินกรอบแชท
-        maxHeight: '250px', // จำกัดความสูงไม่ให้ยาวเฟื้อย
-        borderRadius: '10px', 
-        marginTop: '8px', 
-        cursor: 'pointer',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)' 
-      }} 
-      onClick={() => setZoomedImageUrl(msg.image)} // คลิกแล้วขยายรูปใหญ่
-    />
-  )}
-</div>
+                      {msg.text}
+                      {/* ✨ เพิ่มส่วนนี้เข้าไปเพื่อให้รูปยอมโผล่หน้าออกมา! */}
+                      {msg.image && (
+                        <img 
+                        src={msg.image} 
+                        alt="chat-pic"
+                        style={{ 
+                          display: 'block', 
+                          maxWidth: '100%', 
+                          maxHeight: '250px', 
+                          borderRadius: '10px', 
+                          marginTop: '8px', 
+                          cursor: 'pointer' 
+                        }} 
+                        onClick={() => setZoomedImageUrl(msg.image)} 
+                        />
+                        )}
+                        </div>
+                        
                      <div style={{ fontSize: '10px', color: isMe ? '#BBDEFB' : '#999', textAlign: 'right', marginTop: '6px' }}>{new Date(msg.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
                    </div>
                  )
