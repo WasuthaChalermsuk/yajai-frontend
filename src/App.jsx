@@ -174,9 +174,17 @@ function App() {
   const handleCallAdmin = () => { fetch(`${API_URL}/call-admin`, { method: 'POST', headers: getAuthHeaders() }).then(() => Swal.fire('ส่งข้อความแล้ว', 'ระบบแจ้งเตือนไปยังผู้ดูแลเรียบร้อยครับ', 'success')) }
   const handleImageChange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setNewImage(reader.result); reader.readAsDataURL(file); } }
   
-  const handleAddMed = (e) => { console.log("ชื่อคนไข้:", targetPatient);
-  console.log("ชื่อยา:", newName);
-  console.log("จำนวน:", newStock); e.preventDefault(); if (!newName || !newTime || !targetPatient || !newStock) return Swal.fire('กรุณากรอกข้อมูลให้ครบ'); fetch(`${API_URL}/meds`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient, stock: Number(newStock), imageUrl: newImage }) }).then(res => res.json()).then(data => { setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewImage(''); Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); }) }
+  const handleAddMed = (e) => { e.preventDefault(); if (!newName || !newTime || !targetPatient || !newStock) return Swal.fire('กรุณากรอกข้อมูลให้ครบ'); fetch(`${API_URL}/meds`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ name: newName, time: newTime, meal: newMeal, patientName: targetPatient, stock: Number(newStock), imageUrl: newImage }) }).then(res => res.json()).then(data => { setMeds([...meds, data.medicine]); setNewName(''); setNewTime(''); setNewImage(''); Swal.fire('สำเร็จ', `สั่งยาให้คุณ ${targetPatient} เรียบร้อย`, 'success'); if (Notification.permission === 'granted') {
+    // ถ้าผู้ใช้กดอนุญาตให้แจ้งเตือนแล้ว ให้เด้ง Push Notification
+    new Notification('💊 มียาใหม่เข้ามา!', {
+      body: `พยาบาล/ผู้ดูแล ได้เพิ่มยา "${newName}" ให้คุณ ${targetPatient} (มื้อ${newMeal}) เรียบร้อยแล้ว`,
+      // ถ้ามีอัปโหลดรูปยามาด้วย ให้เอารูปยาโชว์ในแจ้งเตือนเลย
+      icon: newImage ? URL.createObjectURL(newImage) : null 
+    });
+  } else {
+    // ถ้ายังไม่ได้เปิดแจ้งเตือน ให้เด้ง Alert ธรรมดาในแอปแทน
+    alert(`✅ บันทึกยา "${newName}" ให้คุณ ${targetPatient} เรียบร้อยแล้ว!`);
+  }}) }
   const handleDeleteMed = (id) => { Swal.fire({ title: 'ลบรายการยา?', icon: 'warning', showCancelButton: true }).then(res => { if (res.isConfirmed) fetch(`${API_URL}/meds/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(() => setMeds(meds.filter(m => m.id !== id))) }) }
   const handleTakeMed = (id) => { fetch(`${API_URL}/meds/${id}`, { method: 'PUT', headers: getAuthHeaders() }).then(res => res.json()).then((updatedMed) => { setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖', stock: updatedMed.stock } : med)); Swal.fire({ icon: 'success', title: 'เยี่ยมมาก!', timer: 1000, showConfirmButton: false }); }) }
   const handleResetMeds = () => { Swal.fire({ title: 'เริ่มวันใหม่?', text: "สถานะยาจะกลับเป็น 'ยังไม่ได้กิน'", icon: 'question', showCancelButton: true }).then(res => { if (res.isConfirmed) { fetch(`${API_URL}/meds/reset/all`, { method: 'PUT', headers: getAuthHeaders() }).then(() => { fetchMeds(); Swal.fire('สำเร็จ', 'รีเซ็ตสถานะแล้ว', 'success'); }) } }) }
