@@ -397,6 +397,7 @@ function App() {
       {activeTab === 'chat' && (
         <div style={{
           position: 'fixed',
+          width: '100%',
           top: '0',        
           bottom: '80px',     // ดันขอบขึ้นพ้นเมนูล่าง
           left: '0',          // ✨ บังคับให้ขอบชนซ้ายขวา
