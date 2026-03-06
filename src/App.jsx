@@ -182,18 +182,18 @@ function App() {
   const handleAuth = (e) => { e.preventDefault(); fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: authUsername, password: authPassword }) }).then(res => res.json()).then(data => { if (data.token) { setToken(data.token); setUsername(data.username); localStorage.setItem('token', data.token); localStorage.setItem('username', data.username); } else { Swal.fire(data.message || 'เกิดข้อผิดพลาด'); } }) }
   
   // สไตล์สำหรับ Input พื้นฐาน
-  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' };
+  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none',width: '100%',boxSizing: 'border-box' , backgroundColor: '#fff', color: '#333' };
 
   if (!token) {
     return (
 <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
-  <div style={{ width: '100%', minHeight: '100vh', background: 'white', padding: '20px', textAlign: 'center' }}>
+  <div style={{ width: '100%', minHeight: '100vh', background: 'white', padding: '20px', textAlign: 'center' , boxSizing: 'border-box'}}>
           <h1 style={{ color: '#1976D2', marginBottom: '10px' }}>YaJai 💊</h1>
           <h3 style={{ color: '#555', marginBottom: '20px' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกใหม่'}</h3>
           <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <input type="text" placeholder="ชื่อผู้ใช้" value={authUsername} onChange={e => setAuthUsername(e.target.value)} style={inputStyle} />
             <input type="password" placeholder="รหัสผ่าน" value={authPassword} onChange={e => setAuthPassword(e.target.value)} style={inputStyle} />
-            <button type="submit" style={{ padding: '12px', background: '#1976D2', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
+            <button type="submit" style={{ padding: '12px', background: '#1976D2', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', boxSizing: 'border-box' , boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
           </form>
           <p onClick={() => setIsLoginMode(!isLoginMode)} style={{ cursor: 'pointer', color: '#1976D2', marginTop: '20px', fontSize: '14px', fontWeight: 'bold' }}>{isLoginMode ? 'ยังไม่มีบัญชี? สมัครเลย' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}</p>
         </div>
