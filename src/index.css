@@ -66,3 +66,16 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden; /* ตัวนี้แหละที่ตัดขอบดำๆ กวนใจทิ้ง */
+  background-color: #222; /* สีพื้นหลังนอกแอป (เปลี่ยนสีได้ตามชอบ) */
+}
+
+#root {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* ดันแอปเราให้อยู่ตรงกลางจอคอม */
+}
