@@ -205,8 +205,7 @@ function App() {
   const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
-    // ✨ แก้อาการเอียงซ้าย ให้ครอบด้วย maxWidth: 1000px และ margin: 0 auto
-    <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '20px', paddingBottom: '100px', boxSizing: 'border-box', fontFamily: 'sans-serif', color: '#333', position: 'relative' }}>
+    <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', width: '100%', margin: '0 auto', padding: '20px', paddingBottom: '100px', boxSizing: 'border-box', fontFamily: 'sans-serif', color: '#333', position: 'relative' }}>
       
       {/* ส่วนหัวแอป (ซ่อนไว้เมื่อ activeTab เป็น 'chat') */}
       {activeTab !== 'chat' && (
@@ -403,7 +402,6 @@ function App() {
           bottom: '100px',     // ดันขอบขึ้นพ้นเมนูล่าง
           left: '0',          // ✨ บังคับให้ขอบชนซ้ายขวา
           right: '0',         // ✨ เพื่อให้ margin: 0 auto ดันเข้ากลางได้เป๊ะๆ
-          maxWidth: '1000px', // ขนาดเดียวกับแอป
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
@@ -463,7 +461,6 @@ function App() {
         bottom: 0,
         left: 0,
         right: 0,
-        maxWidth: '1000px',
         margin: '0 auto', 
         background: 'white',
         display: 'flex',
