@@ -393,12 +393,30 @@ function App() {
 
       {/* หน้าแชท */}
       {activeTab === 'chat' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', background: 'white', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-          <div style={{ background: '#1976D2', padding: '15px', color: 'white' }}>
+        <div style={{
+          position: 'fixed',
+          top: '90px',     // เว้นระยะให้ Header ด้านบน
+          bottom: '68px',  // เว้นระยะให้เมนูด้านล่าง
+          left: '0',
+          right: '0',
+          maxWidth: '500px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'white',
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '20px',
+          overflow: 'hidden',
+          boxShadow: '0 -4px 15px rgba(0,0,0,0.1)',
+          zIndex: 50 // ดันให้ลอยอยู่หน้าสุด
+        }}>
+          
+          {/* หัวข้อแชท (ล็อคติดขอบบนของกล่อง) */}
+          <div style={{ background: '#1976D2', padding: '15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                  <b style={{ whiteSpace: 'nowrap' }}>แชทกับ:</b>
-                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none' }}>
+                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none', color: '#333' }}>
                    {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                  </select>
                </div>
@@ -407,9 +425,10 @@ function App() {
             )}
           </div>
 
+          {/* พื้นที่ข้อความ (เลื่อนได้แค่ตรงนี้) */}
           <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F0F4F8' }}>
              {messages.length === 0 ? (
-               <div style={{ textAlign: 'center', color: '#888', marginTop: '30px', background: 'white', padding: '15px', borderRadius: '10px', alignSelf: 'center' }}>เริ่มบทสนทนาได้เลย! 👋</div>
+               <div style={{ textAlign: 'center', color: '#888', marginTop: '30px', background: 'white', padding: '15px', borderRadius: '10px', alignSelf: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>เริ่มบทสนทนาได้เลย! 👋</div>
              ) : (
                messages.map((msg, idx) => {
                  const isMe = msg.sender === username;
@@ -425,11 +444,13 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE' }}>
-             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎙️</button>
+          {/* ช่องพิมพ์ข้อความ (ล็อคติดขอบล่างของกล่อง) */}
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE', zIndex: 51 }}>
+             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🎙️</button>
              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA' }} />
-             <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '25px', fontWeight: 'bold' }}>ส่ง</button>
+             <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '25px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)' }}>ส่ง</button>
           </form>
+          
         </div>
       )}
 
