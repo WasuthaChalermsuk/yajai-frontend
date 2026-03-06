@@ -87,8 +87,6 @@ function App() {
     }
 
     if (!target) return;
-
-    // 1. เริ่มดึงข้อมูล -> สั่งให้ขึ้น Loading
     setIsLoading(true); 
 
     fetch(`${API_URL}/diary/${target}`, {
@@ -98,12 +96,10 @@ function App() {
       .then(res => res.json())
       .then(data => {
         setDiaries(data);
-        // 2. โหลดสำเร็จ -> สั่งปิด Loading
         setIsLoading(false); 
       })
       .catch(err => {
         console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err);
-        // 3. โหลดพัง (Error) -> ก็ต้องสั่งปิด Loading เหมือนกัน ไม่งั้นมันจะหมุนค้าง
         setIsLoading(false); 
       });
   };
@@ -240,21 +236,16 @@ function App() {
   const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
-    <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: 'white' }}>
+    // ✨ เพิ่ม paddingBottom: '80px' และ minHeight เพื่อเผื่อพื้นที่ให้แถบเมนูด้านล่าง ไม่ให้มันไปบังเนื้อหา
+    <div style={{ padding: '20px', paddingBottom: '90px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', minHeight: '100vh', position: 'relative' }}>
+      
+      {/* ส่วนหัวแอป */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ margin: 0, color: '#90CAF9' }}>YaJai 💊</h1>
         <div style={{ textAlign: 'right' }}>
-          <span style={{ marginRight: '10px' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
+          <span style={{ marginRight: '10px', fontSize: '14px' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
           <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px' }}>ออก</button>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setActiveTab('meds')} style={{ flex: 1, padding: '10px', background: activeTab === 'meds' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💊 {username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</button>
-        <button onClick={() => setActiveTab('history')} style={{ flex: 1, padding: '10px', background: activeTab === 'history' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
-          {username === 'admin' ? '📊 ประวัติ' : '📓 บันทึกอาการ'}
-        </button>
-        <button onClick={() => setActiveTab('chat')} style={{ flex: 1, padding: '10px', background: activeTab === 'chat' ? '#2196F3' : '#555', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💬 แชท</button>
       </div>
 
       {!pushEnabled && activeTab === 'meds' && (
@@ -263,6 +254,7 @@ function App() {
         </div>
       )}
 
+      {/* หน้าจัดการยา / หน้ากินยา */}
       {activeTab === 'meds' && (
         username === 'admin' ? (
           <>
@@ -354,6 +346,7 @@ function App() {
         )
       )}
 
+      {/* หน้าประวัติ */}
       {activeTab === 'history' && (
         <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -422,8 +415,10 @@ function App() {
         </div>
       )}
 
+      {/* หน้าแชท */}
+      {/* ✨ ปรับความสูงแชทให้พอดีกับแถบเมนูด้านล่าง (calc(100vh - 180px)) */}
       {activeTab === 'chat' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '60vh', background: '#444', borderRadius: '15px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', background: '#444', borderRadius: '15px', overflow: 'hidden' }}>
           <div style={{ background: '#303f9f', padding: '15px', borderBottom: '1px solid #555' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -462,6 +457,49 @@ function App() {
           </form>
         </div>
       )}
+
+      {/* ✨ เมนูด้านล่าง (Bottom Navigation) แบบแอปมือถือ */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        maxWidth: '500px',
+        margin: '0 auto',
+        background: '#222',
+        display: 'flex',
+        justifyContent: 'space-around',
+        padding: '12px 0',
+        boxShadow: '0 -4px 10px rgba(0,0,0,0.4)',
+        zIndex: 1000,
+        borderTopLeftRadius: '20px',
+        borderTopRightRadius: '20px'
+      }}>
+        <button 
+          onClick={() => setActiveTab('meds')} 
+          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'meds' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'meds' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>💊</span>
+          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</span>
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('history')} 
+          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'history' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'history' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>{username === 'admin' ? '📊' : '📓'}</span>
+          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{username === 'admin' ? 'ประวัติ' : 'บันทึกอาการ'}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('chat')} 
+          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'chat' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'chat' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>💬</span>
+          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>แชท</span>
+        </button>
+      </div>
+      
     </div>
   )
 }
