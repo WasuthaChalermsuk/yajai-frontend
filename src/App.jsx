@@ -58,6 +58,7 @@ function App() {
   const [chatInput, setChatInput] = useState('')
   const [chatTarget, setChatTarget] = useState('') 
   const messagesEndRef = useRef(null)
+  const [chatImage, setChatImage] = useState(null); // ตัวแปรเก็บรูปภาพที่จะส่ง
 
   // ระบบบันทึกอาการ
   const [diaryInput, setDiaryInput] = useState('')
@@ -150,11 +151,37 @@ function App() {
     } catch (error) { Swal.fire('เกิดข้อผิดพลาด!', `ส่งข้อมูลไม่ได้\n${error.message}`, 'error'); }
   };
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !chatTarget) return;
-    fetch(`${API_URL}/messages`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ receiver: chatTarget, text: chatInput }) }).then(() => setChatInput(''));
+  const handleSendMessage = async (e) => {
+  e.preventDefault();
+  
+  // ✨ เช็คทั้งข้อความและรูป ถ้าว่างทั้งคู่ไม่ต้องส่ง
+  if ((!chatInput.trim() && !chatImage) || !chatTarget) return;
+
+  const body = {
+    receiver: chatTarget,
+    text: chatInput,
+    image: chatImage // ✨ ส่งรูป Base64 ไปด้วย
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/messages`, {
+      method: 'POST',
+      headers: { 
+        ...getAuthHeaders(), // ใช้ฟังก์ชันดึง Header เดิมของเพื่อน
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      setChatInput('');
+      setChatImage(null); // ✨ ล้างรูปหลังส่งสำเร็จ
+      // ถ้าเพื่อนมีฟังก์ชันโหลดแชทใหม่ (เช่น fetchMessages) ให้เรียกตรงนี้ครับ
+    }
+  } catch (err) {
+    console.error("ส่งข้อความล้มเหลว:", err);
   }
+};
 
   const handleEnablePush = async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return Swal.fire('เสียใจด้วย', 'เบราว์เซอร์ไม่รองรับ', 'error');
@@ -445,7 +472,28 @@ function App() {
                  return (
                    <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', background: isMe ? '#1976D2' : 'white', color: isMe ? 'white' : '#333', padding: '12px 16px', borderRadius: '18px', borderBottomRightRadius: isMe ? '4px' : '18px', borderBottomLeftRadius: !isMe ? '4px' : '18px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                      {!isMe && <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', fontWeight: 'bold' }}>{msg.sender}</div>}
-                     <div style={{ wordBreak: 'break-word', fontSize: '15px' }}>{msg.text}</div>
+                     <div style={{ wordBreak: 'break-word', fontSize: '15px' }}>
+  {/* 1. แสดงข้อความตัวอักษร (ถ้ามี) */}
+  {msg.text}
+
+  {/* 2. ✨ ถ้าใน Database มีรูป (msg.image) ให้วาดรูปออกมาด้วย */}
+  {msg.image && (
+    <img 
+      src={msg.image} 
+      alt="chat-attachment"
+      style={{ 
+        display: 'block', 
+        maxWidth: '100%', // ให้รูปกว้างไม่เกินกรอบแชท
+        maxHeight: '250px', // จำกัดความสูงไม่ให้ยาวเฟื้อย
+        borderRadius: '10px', 
+        marginTop: '8px', 
+        cursor: 'pointer',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)' 
+      }} 
+      onClick={() => setZoomedImageUrl(msg.image)} // คลิกแล้วขยายรูปใหญ่
+    />
+  )}
+</div>
                      <div style={{ fontSize: '10px', color: isMe ? '#BBDEFB' : '#999', textAlign: 'right', marginTop: '6px' }}>{new Date(msg.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
                    </div>
                  )
@@ -454,16 +502,59 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          {/* ช่องพิมพ์ข้อความ */}
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE', zIndex: 51 }}>
-             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🎙️</button>
-             {/* ✨ ใส่ color: '#000' เพื่อบังคับให้ข้อความที่พิมพ์เป็นสีดำชัดๆ */}
-             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA', color: '#000' }} />
-             <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '25px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)' }}>ส่ง</button>
-          </form>
-          
-        </div>
-      )}
+          {/* ----------------- ส่วนช่องพิมพ์ข้อความใหม่ ----------------- */}
+<div style={{ background: 'white', borderTop: '1px solid #EEE' }}>
+  
+  {/* 🖼️ ส่วนแสดงตัวอย่างรูปก่อนส่ง (จะโผล่มาเมื่อเลือกรูป) */}
+  {chatImage && (
+    <div style={{ padding: '10px', position: 'relative', display: 'inline-block' }}>
+      <img src={chatImage} style={{ width: '80px', borderRadius: '10px', border: '1px solid #ddd' }} />
+      <button 
+        onClick={() => setChatImage(null)}
+        style={{ position: 'absolute', top: 0, right: 0, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer' }}
+      >✕</button>
+    </div>
+  )}
+
+  <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', gap: '10px', alignItems: 'center' }}>
+    {/* 🎙️ ปุ่มบันทึกเสียงเดิมของเพื่อน */}
+    <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
+      🎙️
+    </button>
+
+    {/* 📷 ปุ่มเลือกรูปภาพใหม่ */}
+    <label style={{ cursor: 'pointer', fontSize: '24px' }}>
+      📷
+      <input 
+        type="file" 
+        accept="image/*" 
+        style={{ display: 'none' }} 
+        onChange={(e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setChatImage(reader.result);
+            reader.readAsDataURL(file);
+          }
+        }} 
+      />
+    </label>
+
+    <input 
+      type="text" 
+      value={chatInput} 
+      onChange={(e) => setChatInput(e.target.value)} 
+      placeholder="พิมพ์ข้อความที่นี่..." 
+      style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none' }}
+    />
+
+    <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '25px', fontWeight: 'bold' }}>
+      ส่ง
+    </button>
+  </form>
+</div>
+</div>
+)}
 
       {/* เมนูด้านล่าง (Bottom Navigation) */}
       <div style={{
