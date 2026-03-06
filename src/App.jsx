@@ -234,7 +234,7 @@ function App() {
             <div style={{ background: 'white', padding: '20px', borderRadius: '15px', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
               <h3 style={{ marginTop: 0, color: '#1976D2', borderBottom: '2px solid #E3F2FD', paddingBottom: '10px' }}>➕ สั่งยาให้คนไข้</h3>
               <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
-                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={inputStyle}>
+                <select value={targetPatient} onChange={e => setTargetPatient(e.target.value)} style={inputStyle}>
                   <option value="">-- เลือกคนไข้ --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
                 <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={inputStyle} />
