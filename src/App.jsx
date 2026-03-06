@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Swal from 'sweetalert2' 
+import './index.css'; // อย่าลืม import CSS นะเพื่อน!
 
 // ✨ สำคัญ: ใส่ Public Key ของคุณตรงนี้!
 const PUBLIC_VAPID_KEY = 'BOSDiwWnjtEkd-PimXzb_PeyTJpX1J9KARBfm_mYwVDLL-3oJ8wBU2Vvwce4FTRHl1dDokD0096qeSlcJbSeE88';
