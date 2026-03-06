@@ -58,7 +58,7 @@ function App() {
   const [chatTarget, setChatTarget] = useState('') 
   const messagesEndRef = useRef(null)
 
-  // ระบบบันทึกอาการ ✨
+  // ระบบบันทึกอาการ
   const [diaryInput, setDiaryInput] = useState('')
   const [diaries, setDiaries] = useState([])
 
@@ -73,7 +73,6 @@ function App() {
   const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` })
   const handleLogout = () => { setToken(''); setUsername(''); localStorage.clear(); setMeds([]); setActiveTab('meds'); setPushEnabled(false); }
 
-  // ฟังก์ชันโหลดข้อมูลหลัก
   const fetchMeds = () => { fetch(`${API_URL}/meds`, { headers: getAuthHeaders() }).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(setMeds).catch(() => handleLogout()) }
   const fetchPatients = () => { fetch(`${API_URL}/users`, { headers: getAuthHeaders() }).then(res => res.json()).then(data => { if(Array.isArray(data)) { setPatients(data); setChatTarget(data[0] || ''); } }) }
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
@@ -85,41 +84,26 @@ function App() {
     } else {
         target = username;
     }
-
     if (!target) return;
     setIsLoading(true); 
 
-    fetch(`${API_URL}/diary/${target}`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    })
+    fetch(`${API_URL}/diary/${target}`, { method: 'GET', headers: getAuthHeaders() })
       .then(res => res.json())
-      .then(data => {
-        setDiaries(data);
-        setIsLoading(false); 
-      })
-      .catch(err => {
-        console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err);
-        setIsLoading(false); 
-      });
+      .then(data => { setDiaries(data); setIsLoading(false); })
+      .catch(err => { console.error(err); setIsLoading(false); });
   };
 
-  // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
     if (token) {
         fetchMeds(); 
         fetchHistory(); 
         if (username === 'admin') fetchPatients(); 
-         else {
-          setTimeout(() => setChatTarget('admin'), 0);
-        }
+         else setTimeout(() => setChatTarget('admin'), 0);
     } 
   }, [token, username])
 
   useEffect(() => {
-    if (token) {
-      setTimeout(() => fetchDiaries(), 0);
-    }
+    if (token) setTimeout(() => fetchDiaries(), 0);
   }, [token, filterPatient, username]);
 
   useEffect(() => {
@@ -141,17 +125,13 @@ function App() {
 
   const handleVoiceTyping = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return Swal.fire('ขออภัย', 'เบราว์เซอร์ของคุณไม่รองรับระบบสั่งงานด้วยเสียงครับ ลองใช้ Chrome ดูนะ', 'error');
-    
+    if (!SpeechRecognition) return Swal.fire('ขออภัย', 'เบราว์เซอร์ของคุณไม่รองรับระบบสั่งงานด้วยเสียงครับ', 'error');
     const recognition = new SpeechRecognition();
     recognition.lang = 'th-TH'; 
     recognition.start();
-    
     Swal.fire({ title: '🎙️ กำลังฟัง...', text: 'พูดข้อความที่ต้องการส่งได้เลยครับ', showConfirmButton: false });
-    
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setChatInput(prev => prev + transcript + ' ');
+      setChatInput(prev => prev + event.results[0][0].transcript + ' ');
       Swal.close();
     };
     recognition.onerror = () => Swal.fire('เกิดข้อผิดพลาด', 'จับเสียงไม่ได้ครับ ลองใหม่อีกครั้งนะ', 'error');
@@ -160,37 +140,19 @@ function App() {
   const handleSaveDiary = async (e) => {
     e.preventDefault();
     if (!diaryInput.trim()) return;
-
     try {
-      const response = await fetch(`${API_URL}/diaries`, { 
-        method: 'POST', 
-        headers: getAuthHeaders(), 
-        body: JSON.stringify({ note: diaryInput }) 
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`เซิร์ฟเวอร์ตอบกลับ: ${response.status} ${errText}`);
-      }
-
+      const response = await fetch(`${API_URL}/diaries`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ note: diaryInput }) });
+      if (!response.ok) throw new Error(`เซิร์ฟเวอร์ตอบกลับ: ${response.status}`);
       setDiaryInput(''); 
       Swal.fire('บันทึกแล้ว', 'แจ้งอาการให้ผู้ดูแลทราบแล้วครับ', 'success'); 
       fetchDiaries(); 
-      
-    } catch (error) {
-      console.error("❌ Save Diary Error:", error);
-      Swal.fire('เกิดข้อผิดพลาด!', `ส่งข้อมูลไม่ได้\n${error.message}`, 'error');
-    }
+    } catch (error) { Swal.fire('เกิดข้อผิดพลาด!', `ส่งข้อมูลไม่ได้\n${error.message}`, 'error'); }
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim() || !chatTarget) return;
-    fetch(`${API_URL}/messages`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ receiver: chatTarget, text: chatInput })
-    }).then(() => { setChatInput(''); });
+    fetch(`${API_URL}/messages`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ receiver: chatTarget, text: chatInput }) }).then(() => setChatInput(''));
   }
 
   const handleEnablePush = async () => {
@@ -204,7 +166,7 @@ function App() {
         await fetch(`${API_URL}/subscribe`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(subscription) });
         setPushEnabled(true);
         Swal.fire('สำเร็จ', 'เปิดรับการแจ้งเตือนแล้ว!', 'success');
-      } catch (err) { console.error(err); Swal.fire('เกิดข้อผิดพลาด', String(err), 'error'); }
+      } catch (err) { Swal.fire('เกิดข้อผิดพลาด', String(err), 'error'); }
     } else { Swal.fire('ถูกปฏิเสธ', 'ไม่อนุญาตให้แอปส่งแจ้งเตือน', 'warning'); }
   }
 
@@ -218,16 +180,22 @@ function App() {
 
   const handleAuth = (e) => { e.preventDefault(); fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: authUsername, password: authPassword }) }).then(res => res.json()).then(data => { if (data.token) { setToken(data.token); setUsername(data.username); localStorage.setItem('token', data.token); localStorage.setItem('username', data.username); } else { Swal.fire(data.message || 'เกิดข้อผิดพลาด'); } }) }
   
+  // สไตล์สำหรับ Input พื้นฐาน
+  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' };
+
   if (!token) {
     return (
-      <div style={{ padding: '20px', maxWidth: '400px', margin: '50px auto', background: '#333', borderRadius: '15px', textAlign: 'center', color: 'white' }}>
-        <h2>{isLoginMode ? '🔐 เข้าสู่ระบบ YaJai' : '📝 สมัครสมาชิก YaJai'}</h2>
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <input type="text" placeholder="ชื่อผู้ใช้" value={authUsername} onChange={e => setAuthUsername(e.target.value)} style={{ padding: '12px', borderRadius: '8px' }} />
-          <input type="password" placeholder="รหัสผ่าน" value={authPassword} onChange={e => setAuthPassword(e.target.value)} style={{ padding: '12px', borderRadius: '8px' }} />
-          <button type="submit" style={{ padding: '12px', background: '#2196F3', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>{isLoginMode ? 'ล็อกอิน' : 'สมัคร'}</button>
-        </form>
-        <p onClick={() => setIsLoginMode(!isLoginMode)} style={{ cursor: 'pointer', color: '#64B5F6', marginTop: '15px' }}>{isLoginMode ? 'สร้างบัญชีใหม่' : 'มีบัญชีแล้ว'}</p>
+      <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ width: '100%', maxWidth: '400px', background: 'white', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', color: '#333' }}>
+          <h1 style={{ color: '#1976D2', marginBottom: '10px' }}>YaJai 💊</h1>
+          <h3 style={{ color: '#555', marginBottom: '20px' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกใหม่'}</h3>
+          <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <input type="text" placeholder="ชื่อผู้ใช้" value={authUsername} onChange={e => setAuthUsername(e.target.value)} style={inputStyle} />
+            <input type="password" placeholder="รหัสผ่าน" value={authPassword} onChange={e => setAuthPassword(e.target.value)} style={inputStyle} />
+            <button type="submit" style={{ padding: '12px', background: '#1976D2', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
+          </form>
+          <p onClick={() => setIsLoginMode(!isLoginMode)} style={{ cursor: 'pointer', color: '#1976D2', marginTop: '20px', fontSize: '14px', fontWeight: 'bold' }}>{isLoginMode ? 'ยังไม่มีบัญชี? สมัครเลย' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}</p>
+        </div>
       </div>
     )
   }
@@ -236,21 +204,22 @@ function App() {
   const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
-    // ✨ เพิ่ม paddingBottom: '80px' และ minHeight เพื่อเผื่อพื้นที่ให้แถบเมนูด้านล่าง ไม่ให้มันไปบังเนื้อหา
-    <div style={{ padding: '20px', paddingBottom: '90px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', minHeight: '100vh', position: 'relative' }}>
+    // ✨ ปรับสีพื้นหลังแอปทั้งหมดเป็นสีฟ้าอ่อน-เทา (#F0F4F8) ตัวอักษรสีเข้ม (#333)
+    <div style={{ backgroundColor: '#F0F4F8', padding: '20px', paddingBottom: '90px', maxWidth: '500px', margin: '0 auto', fontFamily: 'sans-serif', color: '#333', minHeight: '100vh', position: 'relative' }}>
       
       {/* ส่วนหัวแอป */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, color: '#90CAF9' }}>YaJai 💊</h1>
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ marginRight: '10px', fontSize: '14px' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
-          <button onClick={handleLogout} style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px' }}>ออก</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <h2 style={{ margin: 0, color: '#1976D2', display: 'flex', alignItems: 'center', gap: '5px' }}>YaJai 💊</h2>
+        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
+          <button onClick={handleLogout} style={{ background: '#FFF0F0', color: '#E53935', border: '1px solid #FFCDD2', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold' }}>ออก</button>
         </div>
       </div>
 
       {!pushEnabled && activeTab === 'meds' && (
-        <div style={{ background: '#FF9800', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'center', color: 'white' }}>
-          <button onClick={handleEnablePush} style={{ background: '#333', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold' }}>🔔 เปิดแจ้งเตือนแอป</button>
+        <div style={{ background: '#FFF3E0', border: '1px solid #FFE0B2', padding: '15px', borderRadius: '15px', marginBottom: '20px', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 10px 0', color: '#E65100', fontSize: '14px' }}>คุณยังไม่ได้เปิดรับการแจ้งเตือนเตือนกินยา!</p>
+          <button onClick={handleEnablePush} style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(255, 152, 0, 0.4)' }}>🔔 เปิดแจ้งเตือนเดี๋ยวนี้</button>
         </div>
       )}
 
@@ -258,63 +227,71 @@ function App() {
       {activeTab === 'meds' && (
         username === 'admin' ? (
           <>
-            <div style={{ background: '#303f9f', padding: '20px', borderRadius: '15px', marginBottom: '20px' }}>
-              <h3 style={{ marginTop: 0 }}>➕ สั่งยาให้คนไข้</h3>
-              <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '15px', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ marginTop: 0, color: '#1976D2', borderBottom: '2px solid #E3F2FD', paddingBottom: '10px' }}>➕ สั่งยาให้คนไข้</h3>
+              <form onSubmit={handleAddMed} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={inputStyle}>
                   <option value="">-- เลือกคนไข้ --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
-                <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
-                <input type="number" placeholder="จำนวนยาที่มี (เม็ด)" value={newStock} onChange={e => setNewStock(e.target.value)} style={{ padding: '10px', borderRadius: '5px' }} />
+                <input type="text" placeholder="ชื่อยา" value={newName} onChange={e => setNewName(e.target.value)} style={inputStyle} />
+                <input type="number" placeholder="จำนวนยาที่มี (เม็ด)" value={newStock} onChange={e => setNewStock(e.target.value)} style={inputStyle} />
                 
-                <div style={{ background: '#3f51b5', padding: '10px', borderRadius: '5px' }}>
-                  <span style={{ fontSize: '14px', color: '#fff' }}>📸 อัปโหลดรูปยา:</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} style={{ width: '100%', marginTop: '5px' }} />
-                  {newImage && <div style={{ marginTop: '10px', textAlign: 'center' }}><img src={newImage} alt="preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '5px' }} /></div>}
+                <div style={{ background: '#F8F9FA', padding: '12px', borderRadius: '8px', border: '1px dashed #ccc' }}>
+                  <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>📸 อัปโหลดรูปยา:</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} style={{ width: '100%', marginTop: '8px', fontSize: '14px' }} />
+                  {newImage && <div style={{ marginTop: '10px', textAlign: 'center' }}><img src={newImage} alt="preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} /></div>}
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <select value={newMeal} onChange={e => setNewMeal(e.target.value)} style={{ padding: '10px', borderRadius: '5px', flex: 1 }}>{mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}</select>
-                  <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{ padding: '10px', borderRadius: '5px', flex: 1 }} />
+                  <select value={newMeal} onChange={e => setNewMeal(e.target.value)} style={{...inputStyle, flex: 1}}>{mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}</select>
+                  <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{...inputStyle, flex: 1}} />
                 </div>
-                <button type="submit" style={{ background: '#FFC107', color: '#333', padding: '10px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>บันทึก</button>
+                <button type="submit" style={{ background: '#1976D2', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)' }}>บันทึกรายการยา</button>
               </form>
             </div>
             
-            <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}><h3 style={{ margin: 0 }}>📋 จัดการยาทั้งหมด</h3><button onClick={handleResetMeds} style={{ background: '#2196F3', color: 'white', border: 'none', padding: '8px', borderRadius: '5px' }}>🔄 เริ่มวันใหม่</button></div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}><span style={{ fontSize: '14px' }}>🔍 กรองดูคนไข้:</span><select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{ padding: '6px', borderRadius: '5px', flex: 1 }}><option value="">-- ดูทุกคน --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}</select></div>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0, color: '#333' }}>📋 รายการยาทั้งหมด</h3>
+                  <button onClick={handleResetMeds} style={{ background: '#E3F2FD', color: '#1976D2', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: 'bold' }}>🔄 เริ่มวันใหม่</button>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F5F5F5', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>🔍 กรองดูคนไข้:</span>
+                  <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{...inputStyle, padding: '8px', flex: 1}}><option value="">-- ดูทุกคน --</option>{patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}</select>
+              </div>
+
               {filteredAdminMeds.map(m => (
-                <div key={m.id} style={{ borderBottom: '1px solid #555', padding: '15px 0' }}>
+                <div key={m.id} style={{ borderBottom: '1px solid #EEE', padding: '15px 0' }}>
                   {editingId === m.id ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#555', padding: '15px', borderRadius: '10px' }}>
-                      <b style={{ color: '#FFC107' }}>✏️ แก้ไขข้อมูลยา</b>
-                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="ชื่อยา" style={{ padding: '8px', borderRadius: '5px', border: 'none' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#FFF8E1', padding: '15px', borderRadius: '10px', border: '1px solid #FFE082' }}>
+                      <b style={{ color: '#F57F17' }}>✏️ แก้ไขข้อมูลยา</b>
+                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="ชื่อยา" style={inputStyle} />
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{ padding: '8px', borderRadius: '5px', flex: 1, border: 'none' }}>
+                        <select value={editMeal} onChange={e => setEditMeal(e.target.value)} style={{...inputStyle, flex: 1}}>
                           {mealsCategory.map(meal => <option key={meal} value={meal}>มื้อ{meal}</option>)}
                         </select>
-                        <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ padding: '8px', borderRadius: '5px', flex: 1, border: 'none' }} />
+                        <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{...inputStyle, flex: 1}} />
                       </div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                        <button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '8px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>💾 บันทึก</button>
-                        <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#9e9e9e', color: 'white', padding: '8px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>❌ ยกเลิก</button>
+                        <button onClick={() => handleSaveEdit(m.id)} style={{ flex: 1, background: '#4CAF50', color: 'white', padding: '10px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>💾 บันทึก</button>
+                        <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#E0E0E0', color: '#555', padding: '10px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>❌ ยกเลิก</button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                        {m.imageUrl ? <img src={m.imageUrl} alt="med" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }} /> : <div style={{ width: '50px', height: '50px', background: '#555', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>💊</div>}
+                        {m.imageUrl ? <img src={m.imageUrl} alt="med" style={{ width: '55px', height: '55px', objectFit: 'cover', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} /> : <div style={{ width: '55px', height: '55px', background: '#E3F2FD', color: '#1976D2', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💊</div>}
                         <div>
-                          <b>{m.name}</b> <span style={{ color: m.stock <= 5 ? '#ff5252' : '#81C784' }}>(เหลือ {m.stock || 0})</span> 
-                          <span style={{ color: '#bbb', fontSize: '14px' }}><br/>({m.owner})</span> <br/>
-                          <span style={{ fontSize: '14px', color: '#90CAF9' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</span><br/>
-                          <span style={{ fontSize: '13px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</span>
+                          <b style={{ fontSize: '16px', color: '#333' }}>{m.name}</b> <span style={{ fontSize: '13px', fontWeight: 'bold', color: m.stock <= 5 ? '#E53935' : '#4CAF50' }}>(เหลือ {m.stock || 0})</span> 
+                          <div style={{ color: '#888', fontSize: '13px', marginTop: '2px' }}>👤 ของคุณ: {m.owner}</div>
+                          <div style={{ fontSize: '14px', color: '#1976D2', marginTop: '2px', fontWeight: 'bold' }}>มื้อ{m.meal || 'เช้า'} - {m.time} น.</div>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', marginTop: '2px', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800' }}>{m.status}</div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
-                        <button onClick={() => startEdit(m)} style={{ background: '#FFC107', color: '#333', border: 'none', borderRadius: '5px', padding: '6px 15px', fontWeight: 'bold' }}>✏️ แก้ไข</button>
-                        <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#ff5252', color: 'white', border: 'none', borderRadius: '5px', padding: '6px 15px' }}>🗑️ ลบ</button>
+                      <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                        <button onClick={() => startEdit(m)} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', borderRadius: '8px', padding: '6px 12px', fontWeight: 'bold' }}>✏️ แก้ไข</button>
+                        <button onClick={() => handleDeleteMed(m.id)} style={{ background: '#FFEBEE', color: '#E53935', border: '1px solid #FFCDD2', borderRadius: '8px', padding: '6px 12px', fontWeight: 'bold' }}>🗑️ ลบ</button>
                       </div>
                     </div>
                   )}
@@ -324,19 +301,26 @@ function App() {
           </>
         ) : (
           <>
-            <button onClick={handleCallAdmin} style={{ width: '100%', padding: '12px', background: '#E91E63', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>🛎️ เรียกผู้ดูแล</button>
+            <button onClick={handleCallAdmin} style={{ width: '100%', padding: '15px', background: 'linear-gradient(135deg, #FF4081, #E91E63)', color: 'white', border: 'none', borderRadius: '15px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', boxShadow: '0 4px 10px rgba(233, 30, 99, 0.3)' }}>🛎️ เรียกพยาบาล / ผู้ดูแล</button>
             {mealsCategory.map(mealName => {
               const medsInThisMeal = meds.filter(m => (m.meal || 'เช้า') === mealName);
               if (medsInThisMeal.length === 0) return null; 
               return (
-                <div key={mealName} style={{ background: '#444', padding: '15px', borderRadius: '15px', marginBottom: '15px' }}>
-                  <h3 style={{ margin: '0 0 15px 0', color: '#FFC107', borderBottom: '2px solid #555', paddingBottom: '10px' }}>🍽️ ยามื้อ{mealName}</h3>
+                <div key={mealName} style={{ marginBottom: '20px' }}>
+                  <h3 style={{ margin: '0 0 10px 0', color: '#1976D2', display: 'flex', alignItems: 'center', gap: '8px' }}>🍽️ ยามื้อ{mealName}</h3>
                   {medsInThisMeal.map(m => (
-                    <div key={m.id} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '10px', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '5px' }}>{m.name} <span style={{ fontSize: '14px', color: m.stock <= 5 ? '#ff5252' : '#aaa' }}>(เหลือ {m.stock || 0})</span><span style={{ float: 'right' }}>🕒 {m.time} น.</span></div>
-                      {m.imageUrl && (<div style={{ margin: '10px 0', textAlign: 'center' }}><img src={m.imageUrl} alt="ยา" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '10px' }} /></div>)}
-                      <div style={{ margin: '10px 0', color: m.status === 'กินแล้ว 💖' ? '#81C784' : '#FFB74D', textAlign: 'center', fontWeight: 'bold' }}>{m.status}</div>
-                      <button onClick={() => handleTakeMed(m.id)} disabled={m.status === 'กินแล้ว 💖'} style={{ width: '100%', padding: '12px', background: m.status === 'กินแล้ว 💖' ? '#555' : '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px' }}>{m.status === 'กินแล้ว 💖' ? '✅ กินแล้ว' : 'กดเมื่อกินยา'}</button>
+                    <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '15px', marginBottom: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderLeft: m.status === 'กินแล้ว 💖' ? '6px solid #4CAF50' : '6px solid #FF9800' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#333' }}>{m.name}</span>
+                          <span style={{ background: '#E3F2FD', color: '#1976D2', padding: '4px 10px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold' }}>🕒 {m.time} น.</span>
+                      </div>
+                      <div style={{ fontSize: '14px', color: m.stock <= 5 ? '#E53935' : '#888', marginBottom: '10px' }}>ยามีเหลือ {m.stock || 0} เม็ด</div>
+                      
+                      {m.imageUrl && (<div style={{ margin: '15px 0', textAlign: 'center' }}><img src={m.imageUrl} alt="ยา" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} /></div>)}
+                      
+                      <div style={{ margin: '15px 0 10px 0', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800', textAlign: 'center', fontWeight: 'bold', fontSize: '16px' }}>{m.status}</div>
+                      
+                      <button onClick={() => handleTakeMed(m.id)} disabled={m.status === 'กินแล้ว 💖'} style={{ width: '100%', padding: '14px', background: m.status === 'กินแล้ว 💖' ? '#E8F5E9' : '#4CAF50', color: m.status === 'กินแล้ว 💖' ? '#2E7D32' : 'white', border: m.status === 'กินแล้ว 💖' ? '1px solid #C8E6C9' : 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', boxShadow: m.status === 'กินแล้ว 💖' ? 'none' : '0 4px 10px rgba(76, 175, 80, 0.3)', transition: 'all 0.3s' }}>{m.status === 'กินแล้ว 💖' ? '✅ ทานยาเรียบร้อย' : 'กดปุ่มนี้เมื่อกินยาแล้ว'}</button>
                     </div>
                   ))}
                 </div>
@@ -348,39 +332,35 @@ function App() {
 
       {/* หน้าประวัติ */}
       {activeTab === 'history' && (
-        <div style={{ background: '#444', padding: '20px', borderRadius: '15px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: 0 }}>{username === 'admin' ? '📊 สถิติ & ประวัติ' : '📓 บันทึกอาการ'}</h3>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: 0, color: '#1976D2' }}>{username === 'admin' ? '📊 สถิติ & ประวัติ' : '📓 บันทึกอาการ'}</h3>
             {username === 'admin' && (
-              <button onClick={() => window.print()} style={{ background: '#9C27B0', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ Save เป็น PDF</button>
+              <button onClick={() => window.print()} style={{ background: '#E3F2FD', color: '#1976D2', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🖨️ PDF</button>
             )}
           </div>
 
           {username === 'admin' && (
             <>
-              {history.length === 0 ? <p style={{ color: '#bbb' }}>ยังไม่มีประวัติการกินยา</p> : 
+              {history.length === 0 ? <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>ยังไม่มีประวัติการกินยา</p> : 
                 history.map((h, index) => (
-                  <div key={index} style={{ background: '#333', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
+                  <div key={index} style={{ background: '#F8F9FA', border: '1px solid #EEE', padding: '15px', borderRadius: '12px', marginBottom: '15px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <b>📅 {h.date}</b><span style={{ color: '#90CAF9' }}>คุณ {h.owner}</span>
+                        <b style={{ color: '#333' }}>📅 {h.date}</b><span style={{ color: '#1976D2', fontWeight: 'bold' }}>คุณ {h.owner}</span>
                     </div>
-                    <div style={{ background: '#555', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                    <div style={{ background: '#E0E0E0', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
                         <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#ccc' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : '#FFC107' }}>{h.percent}%</b></div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#F57F17' : '#D32F2F' }}>{h.percent}%</b></div>
                   </div>
                 ))
               }
-              <hr style={{ borderColor: '#555', margin: '20px 0' }} />
-              <h3 style={{ color: '#FF9800' }}>📓 บันทึกอาการของคนไข้</h3>
+              <hr style={{ borderColor: '#EEE', margin: '25px 0' }} />
+              <h3 style={{ color: '#1976D2', marginBottom: '15px' }}>📓 บันทึกอาการคนไข้</h3>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
-                <span style={{ fontSize: '14px', color: 'white' }}>🔍 ดูอาการของ:</span>
-                <select 
-                  value={filterPatient} 
-                  onChange={e => setFilterPatient(e.target.value)} 
-                  style={{ padding: '6px', borderRadius: '5px', flex: 1 }}
-                >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F5F5F5', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+                <span style={{ fontSize: '14px', color: '#555', fontWeight: 'bold' }}>🔍 ดูอาการของ:</span>
+                <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} style={{...inputStyle, padding: '8px', flex: 1}}>
                   <option value="">-- ดูทุกคน --</option>
                   {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
@@ -389,26 +369,22 @@ function App() {
           )}
 
           {username !== 'admin' && (
-              <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งผู้ดูแลได้เลย" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} />
-                  <button type="submit" style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>บันทึก</button>
+              <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งไว้ได้เลย" style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ccc', outline: 'none', backgroundColor: '#F8F9FA' }} />
+                  <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '10px', fontWeight: 'bold', boxShadow: '0 4px 8px rgba(25, 118, 210, 0.2)' }}>บันทึก</button>
               </form>
           )}
 
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: '#888' }}>
-              <h3>⏳ กำลังโหลดข้อมูลประวัติ...</h3>
-            </div>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#888' }}><h3>⏳ กำลังโหลดข้อมูล...</h3></div>
           ) : diaries.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: '#aaa' }}>
-              ยังไม่มีการบันทึกอาการครับ
-            </div>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#aaa', background: '#F8F9FA', borderRadius: '10px' }}>ยังไม่มีการบันทึกอาการครับ</div>
           ) : (
             diaries.map((d, i) => (
-              <div key={i} style={{ background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '8px', fontSize: '14px' }}>
-                <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
-                <div>💬 {d.note}</div>
-                {username === 'admin' && <div style={{ fontSize: '12px', color: '#90CAF9', marginTop: '4px' }}>- คุณ {d.owner}</div>}
+              <div key={i} style={{ background: '#E3F2FD', borderLeft: '4px solid #1976D2', padding: '12px 15px', borderRadius: '8px', marginBottom: '10px', fontSize: '14px' }}>
+                <div style={{ color: '#555', fontSize: '12px', marginBottom: '6px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
+                <div style={{ color: '#333', fontSize: '15px' }}>💬 {d.note}</div>
+                {username === 'admin' && <div style={{ fontSize: '12px', color: '#1976D2', marginTop: '6px', fontWeight: 'bold' }}>- คุณ {d.owner}</div>}
               </div>
             ))
           )}
@@ -416,33 +392,32 @@ function App() {
       )}
 
       {/* หน้าแชท */}
-      {/* ✨ ปรับความสูงแชทให้พอดีกับแถบเมนูด้านล่าง (calc(100vh - 180px)) */}
       {activeTab === 'chat' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', background: '#444', borderRadius: '15px', overflow: 'hidden' }}>
-          <div style={{ background: '#303f9f', padding: '15px', borderBottom: '1px solid #555' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', background: 'white', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <div style={{ background: '#1976D2', padding: '15px', color: 'white' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                 <b>แชทกับ:</b>
-                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '5px', borderRadius: '5px', flex: 1 }}>
+                 <b style={{ whiteSpace: 'nowrap' }}>แชทกับ:</b>
+                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none' }}>
                    {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                  </select>
                </div>
             ) : (
-               <div style={{ fontWeight: 'bold', textAlign: 'center' }}>👩‍⚕️ คุยกับผู้ดูแล (Admin)</div>
+               <div style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '16px' }}>👩‍⚕️ คุยกับพยาบาล / ผู้ดูแล</div>
             )}
           </div>
 
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#222' }}>
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F0F4F8' }}>
              {messages.length === 0 ? (
-               <div style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>เริ่มบทสนทนาได้เลย! 👋</div>
+               <div style={{ textAlign: 'center', color: '#888', marginTop: '30px', background: 'white', padding: '15px', borderRadius: '10px', alignSelf: 'center' }}>เริ่มบทสนทนาได้เลย! 👋</div>
              ) : (
                messages.map((msg, idx) => {
                  const isMe = msg.sender === username;
                  return (
-                   <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', background: isMe ? '#4CAF50' : '#555', padding: '10px 15px', borderRadius: '15px', borderBottomRightRadius: isMe ? '2px' : '15px', borderBottomLeftRadius: !isMe ? '2px' : '15px' }}>
-                     {!isMe && <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '3px' }}>{msg.sender}</div>}
-                     <div style={{ wordBreak: 'break-word' }}>{msg.text}</div>
-                     <div style={{ fontSize: '10px', color: '#ddd', textAlign: 'right', marginTop: '5px' }}>{new Date(msg.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
+                   <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', background: isMe ? '#1976D2' : 'white', color: isMe ? 'white' : '#333', padding: '12px 16px', borderRadius: '18px', borderBottomRightRadius: isMe ? '4px' : '18px', borderBottomLeftRadius: !isMe ? '4px' : '18px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                     {!isMe && <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', fontWeight: 'bold' }}>{msg.sender}</div>}
+                     <div style={{ wordBreak: 'break-word', fontSize: '15px' }}>{msg.text}</div>
+                     <div style={{ fontSize: '10px', color: isMe ? '#BBDEFB' : '#999', textAlign: 'right', marginTop: '6px' }}>{new Date(msg.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
                    </div>
                  )
                })
@@ -450,15 +425,15 @@ function App() {
              <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '10px', background: '#333', gap: '10px' }}>
-             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}>🎙️</button>
-             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความ หรือกดไมค์..." style={{ flex: 1, padding: '10px', borderRadius: '20px', border: 'none', outline: 'none' }} />
-             <button type="submit" style={{ background: '#2196F3', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px', fontWeight: 'bold' }}>ส่ง</button>
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE' }}>
+             <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎙️</button>
+             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA' }} />
+             <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '25px', fontWeight: 'bold' }}>ส่ง</button>
           </form>
         </div>
       )}
 
-      {/* ✨ เมนูด้านล่าง (Bottom Navigation) แบบแอปมือถือ */}
+      {/* เมนูด้านล่าง (Bottom Navigation) โทนสว่าง */}
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -466,36 +441,28 @@ function App() {
         right: 0,
         maxWidth: '500px',
         margin: '0 auto',
-        background: '#222',
+        background: 'white',
         display: 'flex',
         justifyContent: 'space-around',
         padding: '12px 0',
-        boxShadow: '0 -4px 10px rgba(0,0,0,0.4)',
+        boxShadow: '0 -4px 15px rgba(0,0,0,0.05)',
         zIndex: 1000,
         borderTopLeftRadius: '20px',
-        borderTopRightRadius: '20px'
+        borderTopRightRadius: '20px',
+        borderTop: '1px solid #EEE'
       }}>
-        <button 
-          onClick={() => setActiveTab('meds')} 
-          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'meds' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'meds' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>💊</span>
+        <button onClick={() => setActiveTab('meds')} style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'meds' ? '#1976D2' : '#999', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'meds' ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s', filter: activeTab === 'meds' ? 'none' : 'grayscale(100%) opacity(0.6)' }}>💊</span>
           <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{username === 'admin' ? 'จัดการยา' : 'หน้ากินยา'}</span>
         </button>
         
-        <button 
-          onClick={() => setActiveTab('history')} 
-          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'history' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'history' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>{username === 'admin' ? '📊' : '📓'}</span>
+        <button onClick={() => setActiveTab('history')} style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'history' ? '#1976D2' : '#999', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'history' ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s', filter: activeTab === 'history' ? 'none' : 'grayscale(100%) opacity(0.6)' }}>{username === 'admin' ? '📊' : '📓'}</span>
           <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{username === 'admin' ? 'ประวัติ' : 'บันทึกอาการ'}</span>
         </button>
 
-        <button 
-          onClick={() => setActiveTab('chat')} 
-          style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'chat' ? '#2196F3' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'chat' ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>💬</span>
+        <button onClick={() => setActiveTab('chat')} style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'chat' ? '#1976D2' : '#999', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === 'chat' ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s', filter: activeTab === 'chat' ? 'none' : 'grayscale(100%) opacity(0.6)' }}>💬</span>
           <span style={{ fontSize: '12px', fontWeight: 'bold' }}>แชท</span>
         </button>
       </div>
