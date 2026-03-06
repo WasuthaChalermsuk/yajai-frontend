@@ -204,8 +204,8 @@ function App() {
   const filteredAdminMeds = filterPatient === '' ? meds : meds.filter(m => m.owner === filterPatient);
 
   return (
-    // ✨ 1. เปลี่ยน maxWidth เป็น 1000px ให้ขยายตามจอคอม
-    <div style={{ backgroundColor: '#F0F4F8', padding: '20px', paddingBottom: '90px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif', color: '#333', minHeight: '100vh', position: 'relative' }}>
+    
+    <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '20px', paddingBottom: '100px', boxSizing: 'border-box', fontFamily: 'sans-serif', color: '#333', position: 'relative' }}>
       
       {/* ✨ 2. ส่วนหัวแอป (ซ่อนไว้เมื่อ activeTab เป็น 'chat') */}
       {activeTab !== 'chat' && (
@@ -396,21 +396,21 @@ function App() {
       {activeTab === 'chat' && (
         <div style={{
           position: 'fixed',
-          top: '0',        // ✨ เปลี่ยนเป็น 0 เพื่อให้ดันขึ้นไปติดขอบบนสุดของจอ
-          bottom: '68px',
+          top: '0',        
+          bottom: '85px',     // ✨ ดันขอบล่างขึ้นมาไม่ให้เมนูข้างล่างทับ
           left: '0',
           right: '0',
-          maxWidth: '1000px', // ✨ เปลี่ยนให้ขยายตามจอคอม
+          maxWidth: '1200px', // ✨ ขยายให้ตรงกับความกว้างแอป
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'white',
-          overflow: 'hidden', // เอา border-radius ออกเวลาติดขอบบนจะสวยกว่า
+          overflow: 'hidden',
           boxShadow: '0 -4px 15px rgba(0,0,0,0.1)',
           zIndex: 50
         }}>
           
-          {/* หัวข้อแชท (เพิ่ม padding-top ให้ไม่ชิดขอบมือถือเกินไป) */}
+          {/* หัวข้อแชท */}
           <div style={{ background: '#1976D2', padding: '20px 15px 15px', color: 'white', zIndex: 51, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -425,7 +425,8 @@ function App() {
           </div>
 
           {/* พื้นที่ข้อความ */}
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F0F4F8' }}>
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F0F4F8' }}>
+             {/* ✨ ใส่ overscrollBehavior: 'contain' ด้านบน เพื่อกันเลื่อนแล้วพื้นหลังดำๆ ขยับ */}
              {messages.length === 0 ? (
                <div style={{ textAlign: 'center', color: '#888', marginTop: '30px', background: 'white', padding: '15px', borderRadius: '10px', alignSelf: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>เริ่มบทสนทนาได้เลย! 👋</div>
              ) : (
@@ -446,12 +447,16 @@ function App() {
           {/* ช่องพิมพ์ข้อความ */}
           <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', background: 'white', gap: '10px', borderTop: '1px solid #EEE', zIndex: 51 }}>
              <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', color: '#F57F17', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🎙️</button>
-             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA' }} />
+             
+             {/* ✨ แก้สีตัวอักษรให้เป็นสีดำด้วย color: '#000' */}
+             <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="พิมพ์ข้อความที่นี่..." style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none', backgroundColor: '#F8F9FA', color: '#000' }} />
+             
              <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '25px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)' }}>ส่ง</button>
           </form>
           
         </div>
       )}
+      
 
       {/* เมนูด้านล่าง (Bottom Navigation) */}
       <div style={{
@@ -459,7 +464,7 @@ function App() {
         bottom: 0,
         left: 0,
         right: 0,
-        maxWidth: '1000px', // ✨ เปลี่ยนตรงนี้เป็น 1000px ด้วย
+        maxWidth: '1200px',
         margin: '0 auto',
         background: 'white',
         display: 'flex',
