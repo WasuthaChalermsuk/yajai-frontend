@@ -185,8 +185,8 @@ function App() {
 
   if (!token) {
     return (
-      <div style={{ backgroundColor: '#F0F4F8', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div style={{ width: '100%', maxWidth: '400px', background: 'white', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', color: '#333' }}>
+<div className="app-body-wrapper">
+  <div className="app-container">
           <h1 style={{ color: '#1976D2', marginBottom: '10px' }}>YaJai 💊</h1>
           <h3 style={{ color: '#555', marginBottom: '20px' }}>{isLoginMode ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกใหม่'}</h3>
           <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
