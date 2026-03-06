@@ -35,6 +35,8 @@ function App() {
   const [editTime, setEditTime] = useState('')
   const [editMeal, setEditMeal] = useState('เช้า')
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const startEdit = (med) => {
     setEditingId(med.id);
     setEditName(med.name);
@@ -77,30 +79,34 @@ function App() {
   const fetchHistory = () => { fetch(`${API_URL}/history`, { headers: getAuthHeaders() }).then(res => res.json()).then(setHistory); }
   
   const fetchDiaries = () => {
-  let target = '';
-  
-  // จัดการเงื่อนไขว่าใครกำลังขอดูข้อมูล
-  if (username === 'admin') {
-      // ถ้าแอดมินล็อกอิน ให้ใช้ชื่อคนไข้ที่เลือก (filterPatient) หรือถ้าไม่ได้เลือกให้ดึง 'all'
-      target = filterPatient || 'all'; 
-  } else {
-      // ถ้าคนไข้ล็อกอิน ให้ดึงข้อมูลของตัวเองเท่านั้น
-      target = username;
-  }
+    let target = '';
+    if (username === 'admin') {
+        target = filterPatient || 'all'; 
+    } else {
+        target = username;
+    }
 
-  if (!target) return;
+    if (!target) return;
 
-  // ส่งคำขอไปหา Backend
-  fetch(`${API_URL}/diary/${target}`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  })
-    .then(res => res.json())
-    .then(data => {
-      setDiaries(data); // นำข้อมูลไปใส่ State
+    // 1. เริ่มดึงข้อมูล -> สั่งให้ขึ้น Loading
+    setIsLoading(true); 
+
+    fetch(`${API_URL}/diary/${target}`, {
+      method: 'GET',
+      headers: getAuthHeaders()
     })
-    .catch(err => console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err));
-};
+      .then(res => res.json())
+      .then(data => {
+        setDiaries(data);
+        // 2. โหลดสำเร็จ -> สั่งปิด Loading
+        setIsLoading(false); 
+      })
+      .catch(err => {
+        console.error("โหลดข้อมูลประวัติไม่สำเร็จ:", err);
+        // 3. โหลดพัง (Error) -> ก็ต้องสั่งปิด Loading เหมือนกัน ไม่งั้นมันจะหมุนค้าง
+        setIsLoading(false); 
+      });
+  };
 
   // โหลดข้อมูลเมื่อเข้าแอป
   useEffect(() => { 
@@ -109,16 +115,16 @@ function App() {
         fetchHistory(); 
         if (username === 'admin') fetchPatients(); 
          else {
-  setTimeout(() => setChatTarget('admin'), 0);
-}
+          setTimeout(() => setChatTarget('admin'), 0);
+        }
     } 
   }, [token, username])
 
   useEffect(() => {
-  if (token) {
-    setTimeout(() => fetchDiaries(), 0);
-  }
-}, [token, filterPatient, username]);
+    if (token) {
+      setTimeout(() => fetchDiaries(), 0);
+    }
+  }, [token, filterPatient, username]);
 
   useEffect(() => {
     let interval;
@@ -155,7 +161,6 @@ function App() {
     recognition.onerror = () => Swal.fire('เกิดข้อผิดพลาด', 'จับเสียงไม่ได้ครับ ลองใหม่อีกครั้งนะ', 'error');
   };
 
-  // รวมฟังก์ชันบันทึกอาการที่ถูกต้อง (ลองใช้ /diaries ตามคอมเมนต์ของเพื่อน)
   const handleSaveDiary = async (e) => {
     e.preventDefault();
     if (!diaryInput.trim()) return;
@@ -376,7 +381,6 @@ function App() {
               <hr style={{ borderColor: '#555', margin: '20px 0' }} />
               <h3 style={{ color: '#FF9800' }}>📓 บันทึกอาการของคนไข้</h3>
               
-              {/* --- เริ่มโค้ดกล่องเลือกชื่อคนไข้ --- */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
                 <span style={{ fontSize: '14px', color: 'white' }}>🔍 ดูอาการของ:</span>
                 <select 
@@ -388,7 +392,6 @@ function App() {
                   {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                 </select>
               </div>
-              {/* --- จบโค้ดกล่องเลือกชื่อคนไข้ --- */}
             </>
           )}
 
@@ -398,16 +401,24 @@ function App() {
                   <button type="submit" style={{ background: '#FF9800', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>บันทึก</button>
               </form>
           )}
-          
-          {diaries.length === 0 && <p style={{ color: '#bbb', textAlign: 'center' }}>ยังไม่มีการบันทึกอาการครับ</p>}
-          
-          {diaries.map((d, i) => (
+
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: '#888' }}>
+              <h3>⏳ กำลังโหลดข้อมูลประวัติ...</h3>
+            </div>
+          ) : diaries.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: '#aaa' }}>
+              ยังไม่มีการบันทึกอาการครับ
+            </div>
+          ) : (
+            diaries.map((d, i) => (
               <div key={i} style={{ background: '#555', padding: '10px', borderRadius: '8px', marginBottom: '8px', fontSize: '14px' }}>
-                  <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
-                  <div>💬 {d.note}</div>
-                  {username === 'admin' && <div style={{ fontSize: '12px', color: '#90CAF9', marginTop: '4px' }}>- คุณ {d.owner}</div>}
+                <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '4px' }}>{new Date(d.timestamp).toLocaleString('th-TH')}</div>
+                <div>💬 {d.note}</div>
+                {username === 'admin' && <div style={{ fontSize: '12px', color: '#90CAF9', marginTop: '4px' }}>- คุณ {d.owner}</div>}
               </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
