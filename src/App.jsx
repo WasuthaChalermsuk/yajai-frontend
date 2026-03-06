@@ -182,7 +182,7 @@ function App() {
   const handleResetMeds = () => { Swal.fire({ title: 'เริ่มวันใหม่?', text: "สถานะยาจะกลับเป็น 'ยังไม่ได้กิน'", icon: 'question', showCancelButton: true }).then(res => { if (res.isConfirmed) { fetch(`${API_URL}/meds/reset/all`, { method: 'PUT', headers: getAuthHeaders() }).then(() => { fetchMeds(); Swal.fire('สำเร็จ', 'รีเซ็ตสถานะแล้ว', 'success'); }) } }) }
 
   const handleAuth = (e) => { e.preventDefault(); fetch(`${API_URL}${isLoginMode ? '/login' : '/register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: authUsername, password: authPassword }) }).then(res => res.json()).then(data => { if (data.token) { setToken(data.token); setUsername(data.username); localStorage.setItem('token', data.token); localStorage.setItem('username', data.username); } else { Swal.fire(data.message || 'เกิดข้อผิดพลาด'); } }) }
-  
+  const [zoomedImageUrl, setZoomedImageUrl] = useState(null);
   // สไตล์สำหรับ Input พื้นฐาน
   const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none',width: '100%',boxSizing: 'border-box' , backgroundColor: '#fff', color: '#333' };
 
@@ -320,7 +320,7 @@ function App() {
                       </div>
                       <div style={{ fontSize: '14px', color: m.stock <= 5 ? '#E53935' : '#888', marginBottom: '10px' }}>ยามีเหลือ {m.stock || 0} เม็ด</div>
                       
-                      {m.imageUrl && (<div style={{ margin: '15px 0', textAlign: 'center' }}><img src={m.imageUrl} alt="ยา" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} /></div>)}
+                      {m.imageUrl && (<div style={{ margin: '15px 0', textAlign: 'center' }}><img src={m.imageUrl} alt="ยา" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' , cursor: 'pointer' }} onClick={() => setZoomedImageUrl(m.imageUrl)} /></div>)}
                       
                       <div style={{ margin: '15px 0 10px 0', color: m.status === 'กินแล้ว 💖' ? '#4CAF50' : '#FF9800', textAlign: 'center', fontWeight: 'bold', fontSize: '16px' }}>{m.status}</div>
                       
@@ -490,6 +490,65 @@ function App() {
         </button>
       </div>
       
+      {zoomedImageUrl && (
+  <div 
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: 'rgba(0,0,0,0.85)', // พื้นหลังดำโปร่งแสง ลอยทับทั้งหน้าจอ
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999, // ✨ สำคัญ: ให้ลอยทับเมนูล่างและทุกๆ อย่าง
+      cursor: 'zoom-out' // เปลี่ยนรูป Cursor เมื่อต้องการปิด
+    }}
+    // ✨ เมื่อคลิกที่พื้นที่ว่างสีดำ ให้ปิดรูปขยาย
+    onClick={() => setZoomedImageUrl(null)} 
+  >
+    {/* ปุ่ม X สำหรับปิด (เผื่อผู้ใช้หาทางปิดไม่เจอ) */}
+    <button 
+      style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        background: 'white',
+        color: '#333',
+        border: 'none',
+        borderRadius: '50%',
+        width: '40px',
+        height: '40px',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+      }}
+      onClick={() => setZoomedImageUrl(null)}
+    >
+      ✕
+    </button>
+
+    <img 
+      src={zoomedImageUrl} 
+      alt="รูปยาขยายใหญ่" 
+      style={{
+        maxWidth: '90%', // กางเต็มจอแต่ไม่เกินขอบ
+        maxHeight: '90%',
+        borderRadius: '15px',
+        boxShadow: '0 5px 25px rgba(0,0,0,0.3)',
+        cursor: 'default' // ไม่เปลี่ยน cursor บนตัวรูป
+      }} 
+      // ✨ ป้องกันการปิดรูปเมื่อเผลอคลิกที่ตัวรูปยา
+      onClick={(e) => e.stopPropagation()} 
+    />
+  </div>
+)}
+
     </div>
   )
 }
