@@ -417,7 +417,7 @@ function App() {
             {username === 'admin' ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                  <b style={{ whiteSpace: 'nowrap' }}>แชทกับ:</b>
-                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none', color: '#333' }}>
+                 <select value={chatTarget} onChange={e => setChatTarget(e.target.value)} style={{ padding: '6px', borderRadius: '8px', flex: 1, border: 'none', outline: 'none', color: '#ffffff' }}>
                    {patients.map(p => <option key={p} value={p}>คุณ {p}</option>)}
                  </select>
                </div>
@@ -462,8 +462,8 @@ function App() {
         bottom: 0,
         left: 0,
         right: 0,
-        maxWidth: '1000px', // ✨ ให้กว้างเท่าตัวแอปเป๊ะๆ
-        margin: '0 auto',   // ✨ จัดให้อยู่ตรงกลางจอคอม
+        maxWidth: '1000px',
+        margin: '0 auto', 
         background: 'white',
         display: 'flex',
         justifyContent: 'space-around',
