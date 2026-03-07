@@ -537,7 +537,7 @@ function App() {
 
   <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', gap: '10px', alignItems: 'center' }}>
     {/* 🎙️ ปุ่มบันทึกเสียงเดิมของเพื่อน */}
-    <button type="button" onClick={handleVoiceTyping} style={{ background: '#FFF3E0', border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
+    <button type="button" onClick={handleVoiceTyping} style={{ border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
       🎙️
     </button>
 
@@ -564,7 +564,7 @@ function App() {
       value={chatInput} 
       onChange={(e) => setChatInput(e.target.value)} 
       placeholder="พิมพ์ข้อความที่นี่..." 
-      style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none' , background: '#FFF3E0' }}
+      style={{ flex: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #DDD', outline: 'none' , background: '#ffffff77' , color: '#000' }}
     />
 
     <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '25px', fontWeight: 'bold' }}>
