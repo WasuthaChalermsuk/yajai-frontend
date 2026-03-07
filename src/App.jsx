@@ -411,7 +411,7 @@ function App() {
                     <div style={{ background: '#E0E0E0', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' , WebkitPrintColorAdjust: 'exact',printColorAdjust: 'exact' }}>
                         <div style={{ width: `${h.percent}%`, background: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#FFC107' : '#F44336', height: '100%', transition: 'width 0.5s' }}></div>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', color: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#F57F17' : '#D32F2F' }}>{h.percent}%</b></div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>กินยาแล้ว: {h.taken}/{h.total} รายการ <b style={{ float: 'right', WebkitPrintColorAdjust: 'exact', color: h.percent === 100 ? '#4CAF50' : h.percent >= 50 ? '#F57F17' : '#D32F2F' }}>{h.percent}%</b></div>
                   </div>
                 ))
               }
