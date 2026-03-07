@@ -537,7 +537,7 @@ function App() {
 
   <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', gap: '10px', alignItems: 'center' }}>
     {/* 🎙️ ปุ่มบันทึกเสียงเดิมของเพื่อน */}
-    <button type="button" onClick={handleVoiceTyping} style={{ border: '1px solid #FFE0B2', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
+    <button type="button" onClick={handleVoiceTyping} style={{ display: 'none'}}>
       🎙️
     </button>
 
