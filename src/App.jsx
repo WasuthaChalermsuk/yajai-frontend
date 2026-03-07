@@ -208,9 +208,6 @@ function App() {
       // ถ้ามีอัปโหลดรูปยามาด้วย ให้เอารูปยาโชว์ในแจ้งเตือนเลย
       icon: newImage ? URL.createObjectURL(newImage) : null 
     });
-  } else {
-    // ถ้ายังไม่ได้เปิดแจ้งเตือน ให้เด้ง Alert ธรรมดาในแอปแทน
-    alert(`✅ บันทึกยา "${newName}" ให้คุณ ${targetPatient} เรียบร้อยแล้ว!`);
   }}) }
   const handleDeleteMed = (id) => { Swal.fire({ title: 'ลบรายการยา?', icon: 'warning', showCancelButton: true }).then(res => { if (res.isConfirmed) fetch(`${API_URL}/meds/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(() => setMeds(meds.filter(m => m.id !== id))) }) }
   const handleTakeMed = (id) => { fetch(`${API_URL}/meds/${id}`, { method: 'PUT', headers: getAuthHeaders() }).then(res => res.json()).then((updatedMed) => { setMeds(meds.map(med => med.id === id ? { ...med, status: 'กินแล้ว 💖', stock: updatedMed.stock } : med)); Swal.fire({ icon: 'success', title: 'เยี่ยมมาก!', timer: 1000, showConfirmButton: false }); }) }
