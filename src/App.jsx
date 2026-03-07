@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Swal from 'sweetalert2' 
-import './index.css'; // อย่าลืม import CSS นะเพื่อน!
+import './index.css';
+import { io } from 'socket.io-client';
+
+const socket = io('https://yajai-api.onrender.com/');
 
 // ✨ สำคัญ: ใส่ Public Key ของคุณตรงนี้!
 const PUBLIC_VAPID_KEY = 'BOSDiwWnjtEkd-PimXzb_PeyTJpX1J9KARBfm_mYwVDLL-3oJ8wBU2Vvwce4FTRHl1dDokD0096qeSlcJbSeE88';
@@ -124,6 +127,22 @@ function App() {
   }, [activeTab, chatTarget]);
 
   useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
+
+  useEffect(() => {
+    // ถ้ายังไม่ได้ล็อกอิน (ไม่มี token) ก็ไม่ต้องเปิดรับสัญญาณ
+    if (!token) return;
+
+    // รอฟังเสียงตะโกนจาก Server ว่ามียาอัปเดต
+    socket.on('medsUpdated', () => {
+      console.log('🔄 Server บอกว่ามียาอัปเดต! กำลังโหลดข้อมูลยาใหม่...');
+      fetchMeds(); // สั่งรีเฟรชยาแบบเนียนๆ
+    });
+
+    // Cleanup: ล้างหูฟังตอนผู้ใช้ออกจากระบบหรือปิดเว็บ ป้องกันมันรันซ้ำซ้อน
+    return () => {
+      socket.off('medsUpdated');
+    };
+  }, [token]);
 
   const handleVoiceTyping = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
