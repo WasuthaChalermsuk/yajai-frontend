@@ -536,12 +536,20 @@ function App() {
   )}
 
   <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', gap: '10px', alignItems: 'center' }}>
-    {/* 🎙️ ปุ่มบันทึกเสียงเดิมของเพื่อน */}
-    <button type="button" onClick={handleVoiceTyping} style={{ cursor: 'pointer', fontSize: '24px' }}>
+    <button 
+      type="button" 
+      onClick={handleVoiceTyping} 
+      style={{ 
+        cursor: 'pointer', 
+        fontSize: '24px',
+        background: 'none',
+        border: 'none',     
+        padding: '0',     
+        display: 'flex', 
+        alignItems: 'center'
+      }}
+    >
       🎙️
-      <input 
-        style={{ display: 'none' }} 
-        />
     </button>
 
     {/* 📷 ปุ่มเลือกรูปภาพใหม่ */}
