@@ -535,10 +535,13 @@ function App() {
     </div>
   )}
 
-  <form onSubmit={handleSendMessage} style={{ display: 'none' }}>
+  <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '12px', gap: '10px', alignItems: 'center' }}>
     {/* 🎙️ ปุ่มบันทึกเสียงเดิมของเพื่อน */}
     <button type="button" onClick={handleVoiceTyping} style={{ cursor: 'pointer', fontSize: '24px' }}>
       🎙️
+      <input 
+        style={{ display: 'none' }} 
+        />
     </button>
 
     {/* 📷 ปุ่มเลือกรูปภาพใหม่ */}
