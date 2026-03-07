@@ -127,14 +127,27 @@ function App() {
       socket.on('chatUpdated', () => {
         fetchMsgs(); // ถ้ามีแชทใหม่ ค่อยโหลดข้อมูล
       });
-
-      // ✨ แก้ส่วนนี้: คืนค่าเป็นการปิดหูฟัง Socket แทน clearInterval
       return () => {
         socket.off('chatUpdated');
       };
       
     }
   }, [activeTab, chatTarget]);
+
+  useEffect(() => {
+    socket.on('patientsUpdated', () => {
+      // เช็คว่าเป็นแอดมินหรือเปล่า ถ้าใช่ให้โหลดข้อมูลคนไข้ใหม่
+      if (username === 'admin') {
+        fetchPatients(); 
+      }
+    });
+
+    // คืนค่าปิดการฟังเวลาเปลี่ยนหน้า
+    return () => {
+      socket.off('patientsUpdated');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username]);
 
   useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
 
