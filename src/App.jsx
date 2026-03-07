@@ -112,18 +112,28 @@ function App() {
   }, [token, filterPatient, username]);
 
   useEffect(() => {
-    let interval;
     if (activeTab === 'chat' && chatTarget) {
+      
       const fetchMsgs = () => {
         fetch(`${API_URL}/messages/${chatTarget}`, { headers: getAuthHeaders() })
           .then(res => res.json())
           .then(setMessages)
           .catch(err => console.error(err));
       }
-      fetchMsgs(); 
-      interval = setInterval(fetchMsgs, 3000); 
+      
+      fetchMsgs(); // โหลดข้อมูลครั้งแรก
+
+      // ✨ เพิ่มส่วนนี้: ให้ Socket.IO รอฟังว่ามีแชทใหม่ไหม
+      socket.on('chatUpdated', () => {
+        fetchMsgs(); // ถ้ามีแชทใหม่ ค่อยโหลดข้อมูล
+      });
+
+      // ✨ แก้ส่วนนี้: คืนค่าเป็นการปิดหูฟัง Socket แทน clearInterval
+      return () => {
+        socket.off('chatUpdated');
+      };
+      
     }
-    return () => clearInterval(interval);
   }, [activeTab, chatTarget]);
 
   useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
