@@ -430,7 +430,7 @@ function App() {
 
           {username !== 'admin' && (
               <form onSubmit={handleSaveDiary} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งไว้ได้เลย" style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #000000', outline: 'none', backgroundColor: '#F8F9FA' }} />
+                  <input type="text" value={diaryInput} onChange={e => setDiaryInput(e.target.value)} placeholder="วันนี้รู้สึกยังไงบ้าง? พิมพ์แจ้งไว้ได้เลย" style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ccc', outline: 'none', backgroundColor: '#F8F9FA' , color: '#000' }} />
                   <button type="submit" style={{ background: '#1976D2', color: 'white', border: 'none', padding: '0 20px', borderRadius: '10px', fontWeight: 'bold', boxShadow: '0 4px 8px rgba(25, 118, 210, 0.2)' }}>บันทึก</button>
               </form>
           )}
