@@ -257,7 +257,18 @@ function App() {
       {/* ส่วนหัวแอป (ซ่อนไว้เมื่อ activeTab เป็น 'chat') */}
       {activeTab !== 'chat' && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h2 style={{ margin: 0, color: '#1976D2', display: 'flex', alignItems: 'center', gap: '5px' }}>YaJai 💊</h2>
+          <h2 style={{ margin: 0, color: '#1976D2', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+  <img 
+    src="./logo.png" // 💡 1. ใส่ path รูปโลโก้ของเพื่อนตรงนี้
+    alt="YaJai Logo" 
+    style={{ 
+      width: '120px',    // 💡 2. ปรับขนาดความกว้างตามต้องการ
+      height: 'auto',    // ให้ความสูงปรับตามสัดส่วนอัตโนมัติ รูปจะได้ไม่บี้
+      objectFit: 'contain' // ป้องกันรูปโดนตัดขอบ
+    }} 
+  />
+</div></h2>
           <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>👤 {username} {username === 'admin' && '(Admin)'}</span>
             <button onClick={handleLogout} style={{ background: '#FFF0F0', color: '#E53935', border: '1px solid #FFCDD2', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold' }}>ออก</button>
