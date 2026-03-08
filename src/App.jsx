@@ -151,19 +151,23 @@ function App() {
 
   useEffect(() => { if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeTab]);
 
-  useEffect(() => {
-    // ถ้ายังไม่ได้ล็อกอิน (ไม่มี token) ก็ไม่ต้องเปิดรับสัญญาณ
-    if (!token) return;
+useEffect(() => {
 
-    // รอฟังเสียงตะโกนจาก Server ว่ามียาอัปเดต
+    if (!token) return;
     socket.on('medsUpdated', () => {
       console.log('🔄 Server บอกว่ามียาอัปเดต! กำลังโหลดข้อมูลยาใหม่...');
-      fetchMeds(); // สั่งรีเฟรชยาแบบเนียนๆ
+      fetchMeds(); 
     });
 
-    // Cleanup: ล้างหูฟังตอนผู้ใช้ออกจากระบบหรือปิดเว็บ ป้องกันมันรันซ้ำซ้อน
+    socket.on('dailyReset', () => {
+      console.log('🌅 เริ่มวันใหม่! โหลดข้อมูลยับๆ...');
+      fetchMeds();      
+      fetchHistory();  
+    });
+
     return () => {
       socket.off('medsUpdated');
+      socket.off('dailyReset');
     };
   }, [token]);
 
